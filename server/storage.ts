@@ -1,15 +1,23 @@
-import {
-  User, InsertUser,
-  SocialAccount, InsertSocialAccount,
-  Post, InsertPost,
-  AnalyticsData, InsertAnalyticsData,
-  EngageActivity, InsertEngageActivity,
-  Insight, InsertInsight,
-  MonetizationRecord, InsertMonetizationRecord,
-  LoginCredentials
-} from "@shared/schema";
+// Import types from the schema file
+import * as schema from '@shared/schema';
 
-// Interface that defines all storage operations
+// Type aliases to maintain backward compatibility
+export type User = schema.User;
+export type InsertUser = schema.InsertUser;
+export type SocialAccount = schema.SocialAccount;
+export type InsertSocialAccount = schema.InsertSocialAccount;
+export type Post = schema.Post;
+export type InsertPost = schema.InsertPost;
+export type AnalyticsData = schema.AnalyticsData;
+export type InsertAnalyticsData = schema.InsertAnalyticsData;
+export type EngageActivity = schema.EngageActivity;
+export type InsertEngageActivity = schema.InsertEngageActivity;
+export type Insight = schema.Insight;
+export type InsertInsight = schema.InsertInsight;
+export type MonetizationRecord = schema.MonetizationRecord;
+export type InsertMonetizationRecord = schema.InsertMonetizationRecord;
+export type LoginCredentials = schema.LoginCredentials;
+
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
@@ -277,13 +285,13 @@ export class MemStorage implements IStorage {
     const newAccount: SocialAccount = {
       ...account,
       id: this.accountId++,
-      // Set default values for all new fields
+      // Set default values for all fields that might be optional
       displayName: account.displayName || null,
       profileUrl: account.profileUrl || null,
       avatarUrl: account.avatarUrl || null,
       bio: account.bio || null,
-      followerCount: account.followerCount || 0,
-      followingCount: account.followingCount || 0,
+      followerCount: account.followerCount || null,
+      followingCount: account.followingCount || null,
       isPrimary: account.isPrimary || false,
       lastSynced: account.lastSynced || null,
       accountCategory: account.accountCategory || null,
@@ -293,6 +301,10 @@ export class MemStorage implements IStorage {
       apiVersion: account.apiVersion || null,
       webhookUrl: account.webhookUrl || null,
       scopes: account.scopes || null,
+      accessToken: account.accessToken || null,
+      refreshToken: account.refreshToken || null,
+      tokenExpiry: account.tokenExpiry || null,
+      isActive: account.isActive || true,
     };
     this.socialAccounts.set(newAccount.id, newAccount);
     return newAccount;
@@ -361,24 +373,25 @@ export class MemStorage implements IStorage {
     const newPost: Post = {
       ...post,
       id: this.postId++,
-      engagementScore: Math.random() * 100, // Simulated AI score
-      shadowbanRisk: Math.random() * 5, // Simulated AI risk assessment
-      audienceMatch: Math.random() * 0.8 + 0.2, // Random 0.2-1.0 value
-      publishedAt: post.publishedAt || null,
+      // Handle fields that might be optional
+      socialAccountId: post.socialAccountId || null,
       mediaUrls: post.mediaUrls || null,
       scheduledAt: post.scheduledAt || null,
+      publishedAt: null, // This will be set when the post is published
       tags: post.tags || null,
       categories: post.categories || null,
-      socialAccountId: post.socialAccountId || null,
       isMonetized: post.isMonetized || false,
       monetizationDetails: post.monetizationDetails || null,
       aiGenerated: post.aiGenerated || false,
       aiPrompt: post.aiPrompt || null,
       postUrl: post.postUrl || null,
-      postAnalysis: post.postAnalysis || null,
+      postAnalysis: null, // This will be populated after analysis
       visibility: post.visibility || "public",
       lastUpdated: new Date(),
       externalPostId: post.externalPostId || null,
+      engagementScore: 0, // Will be updated by AI analysis
+      shadowbanRisk: 0, // Will be updated by AI analysis
+      audienceMatch: 0, // Will be updated by AI analysis
     };
     this.posts.set(newPost.id, newPost);
     return newPost;
@@ -433,6 +446,7 @@ export class MemStorage implements IStorage {
     const newData: AnalyticsData = {
       ...data,
       id: this.analyticsId++,
+      // Handle optional fields
       socialAccountId: data.socialAccountId || null,
       postId: data.postId || null,
       likes: data.likes || null,
@@ -442,19 +456,20 @@ export class MemStorage implements IStorage {
       clicks: data.clicks || null,
       impressions: data.impressions || null,
       reach: data.reach || null,
-      engagement: data.engagement || null,
-      engagementRate: data.engagementRate || null,
-      followerGain: data.followerGain || null,
-      followerLoss: data.followerLoss || null,
-      videoViews: data.videoViews || null,
-      videoCompletionRate: data.videoCompletionRate || null,
-      averageViewDuration: data.averageViewDuration || null,
-      totalViewDuration: data.totalViewDuration || null,
+      engagement: null, // Calc from likes/comments/shares
+      followersGained: data.followersGained || null,
+      followersLost: null, // Calculate from historical data
+      totalFollowers: data.totalFollowers || null,
+      viewDuration: data.viewDuration || null,
+      completionRate: data.completionRate || null,
+      conversionRate: data.conversionRate || null,
+      bouncerate: data.bouncerate || null,
       demographics: data.demographics || null,
-      topLocations: data.topLocations || null,
-      topAgeGroup: data.topAgeGroup || null,
-      topGender: data.topGender || null,
-      sentiment: data.sentiment || null,
+      geographics: data.geographics || null,
+      referrers: data.referrers || null,
+      deviceInfo: data.deviceInfo || null,
+      peakHours: data.peakHours || null,
+      bestPerforming: data.bestPerforming || false,
       comparisonToAvg: data.comparisonToAvg || null,
     };
     this.analyticsData.set(newData.id, newData);
@@ -482,11 +497,11 @@ export class MemStorage implements IStorage {
       }
       
       if (filters.startDate) {
-        activities = activities.filter(item => new Date(item.performedAt) >= filters.startDate!);
+        activities = activities.filter(item => new Date(item.date) >= filters.startDate!);
       }
       
       if (filters.endDate) {
-        activities = activities.filter(item => new Date(item.performedAt) <= filters.endDate!);
+        activities = activities.filter(item => new Date(item.date) <= filters.endDate!);
       }
     }
     
@@ -497,12 +512,10 @@ export class MemStorage implements IStorage {
     const newActivity: EngageActivity = {
       ...activity,
       id: this.activityId++,
-      performedAt: new Date(),
-      socialAccountId: activity.socialAccountId || null,
-      content: activity.content || null,
-      postId: activity.postId || null,
-      targetUsername: activity.targetUsername || null,
+      targetId: activity.targetId || null,
+      targetType: activity.targetType || null,
       targetContent: activity.targetContent || null,
+      response: activity.response || null,
     };
     this.engageActivities.set(newActivity.id, newActivity);
     return newActivity;
@@ -514,38 +527,37 @@ export class MemStorage implements IStorage {
     isRead?: boolean;
     isApplied?: boolean;
   }): Promise<Insight[]> {
-    let userInsights = Array.from(this.insights.values()).filter(
+    let insights = Array.from(this.insights.values()).filter(
       (insight) => insight.userId === userId,
     );
     
     if (filters) {
       if (filters.type) {
-        userInsights = userInsights.filter(item => item.type === filters.type);
+        insights = insights.filter(item => item.type === filters.type);
       }
       
       if (filters.isRead !== undefined) {
-        userInsights = userInsights.filter(item => item.isRead === filters.isRead);
+        insights = insights.filter(item => item.isRead === filters.isRead);
       }
       
       if (filters.isApplied !== undefined) {
-        userInsights = userInsights.filter(item => item.isApplied === filters.isApplied);
+        insights = insights.filter(item => item.isApplied === filters.isApplied);
       }
     }
     
-    return userInsights;
+    return insights;
   }
   
   async createInsight(insight: InsertInsight): Promise<Insight> {
     const newInsight: Insight = {
       ...insight,
       id: this.insightId++,
+      platform: insight.platform || null,
       createdAt: new Date(),
-      isRead: false,
-      isApplied: false,
-      socialAccountId: insight.socialAccountId || null,
-      severity: insight.severity || null,
-      relatedPostId: insight.relatedPostId || null,
-      metadata: insight.metadata || null
+      isRead: insight.isRead || false,
+      isApplied: insight.isApplied || false,
+      expiresAt: insight.expiresAt || null,
+      metadata: insight.metadata || null,
     };
     this.insights.set(newInsight.id, newInsight);
     return newInsight;
@@ -596,32 +608,33 @@ export class MemStorage implements IStorage {
     const newRecord: MonetizationRecord = {
       ...record,
       id: this.monetizationId++,
+      // Handle optional fields
       status: record.status || null,
-      tags: record.tags || null,
-      postId: record.postId || null,
-      currency: record.currency || null,
-      transactionId: record.transactionId || null,
-      paymentMethod: record.paymentMethod || null,
-      accountNumber: record.accountNumber || null,
-      commission: record.commission || null,
-      referredBy: record.referredBy || null,
-      campaignId: record.campaignId || null,
-      campaignName: record.campaignName || null,
-      partnerName: record.partnerName || null,
-      contractId: record.contractId || null,
-      convertedFrom: record.convertedFrom || null,
-      conversionUrl: record.conversionUrl || null,
+      sourceType: record.sourceType || null,
+      currency: record.currency || 'USD',
       conversionRate: record.conversionRate || null,
-      impressions: record.impressions || null,
-      clicks: record.clicks || null,
-      ctr: record.ctr || null,
-      costPerClick: record.costPerClick || null,
-      costPerMille: record.costPerMille || null,
-      adSpend: record.adSpend || null,
-      roi: record.roi || null,
-      profitMargin: record.profitMargin || null,
+      payout: record.payout || null,
+      payoutDate: record.payoutDate || null,
+      paymentMethod: record.paymentMethod || null,
+      taxWithheld: record.taxWithheld || null,
+      netAmount: record.netAmount || null,
+      postId: record.postId || null,
+      campaignName: record.campaignName || null,
+      campaignId: record.campaignId || null,
+      partnerName: record.partnerName || null,
+      partnerId: record.partnerId || null,
+      commissionType: record.commissionType || null,
+      commissionRate: record.commissionRate || null,
+      productName: record.productName || null,
+      productId: record.productId || null,
+      productCategory: record.productCategory || null,
+      purchaseQuantity: record.purchaseQuantity || null,
+      customerType: record.customerType || null,
+      isRecurring: record.isRecurring || false,
+      isRenewal: record.isRenewal || false,
+      tags: record.tags || null,
       notes: record.notes || null,
-      metrics: record.metrics || null
+      metrics: record.metrics || null,
     };
     this.monetizationRecords.set(newRecord.id, newRecord);
     return newRecord;
@@ -634,12 +647,25 @@ export class MemStorage implements IStorage {
     revenueGenerated: number;
     scheduledPosts: number;
   }> {
-    // For demo purposes, return mock data
+    // Get accounts to calculate followers
+    const accounts = await this.getSocialAccountsByUserId(userId);
+    const totalFollowers = accounts.reduce((sum, acc) => sum + (acc.followerCount || 0), 0);
+    
+    // For a real app, we'd calculate from analytics data
+    const engagementRate = 0.032; // 3.2% engagement rate (simulated)
+    
+    // Get revenue from monetization records
+    const monetizationRecords = await this.getMonetizationRecords(userId);
+    const revenueGenerated = monetizationRecords.reduce((sum, record) => sum + record.amount, 0);
+    
+    // Get scheduled posts count
+    const scheduledPosts = (await this.getScheduledPosts(userId)).length;
+    
     return {
-      totalFollowers: 24521,
-      engagementRate: 4.7,
-      revenueGenerated: 1842,
-      scheduledPosts: 12
+      totalFollowers,
+      engagementRate,
+      revenueGenerated,
+      scheduledPosts,
     };
   }
   
@@ -655,34 +681,51 @@ export class MemStorage implements IStorage {
       logoUrl: string;
     }[];
   }> {
-    // For demo purposes, return mock data
+    const records = await this.getMonetizationRecords(userId);
+    
+    // Calculate total revenue
+    const totalRevenue = records.reduce((sum, record) => sum + record.amount, 0);
+    
+    // Count affiliate sales (assuming sourceType is 'affiliate')
+    const affiliateRecords = records.filter(record => record.sourceType === 'affiliate');
+    const affiliateSales = affiliateRecords.length;
+    
+    // Count sponsored posts (assuming sourceType is 'sponsored')
+    const sponsoredRecords = records.filter(record => record.sourceType === 'sponsored');
+    const sponsoredPosts = sponsoredRecords.length;
+    
+    // Calculate top revenue sources
+    const sourceMap = new Map<string, { amount: number, conversions: number }>();
+    
+    records.forEach(record => {
+      const sourceName = record.partnerName || record.source;
+      if (!sourceMap.has(sourceName)) {
+        sourceMap.set(sourceName, { amount: 0, conversions: 0 });
+      }
+      
+      const current = sourceMap.get(sourceName)!;
+      current.amount += record.amount;
+      current.conversions += 1;
+      sourceMap.set(sourceName, current);
+    });
+    
+    // Convert to array and sort by amount
+    const topSources = Array.from(sourceMap.entries())
+      .map(([name, data]) => ({
+        name,
+        amount: data.amount,
+        conversions: data.conversions,
+        change: Math.random() * 0.4 - 0.1, // Random change between -10% and +30%
+        logoUrl: `https://logo.clearbit.com/${name.toLowerCase().replace(/\s+/g, '')}.com`,
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5); // Take top 5
+    
     return {
-      totalRevenue: 7842,
-      affiliateSales: 124,
-      sponsoredPosts: 8,
-      topRevenueSources: [
-        {
-          name: "Amazon Associates",
-          amount: 2450,
-          conversions: 78,
-          change: 12,
-          logoUrl: "https://logo.clearbit.com/amazon.com"
-        },
-        {
-          name: "Shopify Partners",
-          amount: 1820,
-          conversions: 32,
-          change: 8,
-          logoUrl: "https://logo.clearbit.com/shopify.com"
-        },
-        {
-          name: "Fitness Brand X (Sponsored)",
-          amount: 1500,
-          conversions: 2,
-          change: 0,
-          logoUrl: "https://via.placeholder.com/150"
-        }
-      ]
+      totalRevenue,
+      affiliateSales,
+      sponsoredPosts,
+      topRevenueSources: topSources,
     };
   }
   
@@ -691,25 +734,37 @@ export class MemStorage implements IStorage {
     revenue: number;
     percentage: number;
   }[]> {
-    // For demo purposes, return mock data
-    return [
-      {
-        platform: "instagram",
-        revenue: 3824,
-        percentage: 58
-      },
-      {
-        platform: "facebook",
-        revenue: 2541,
-        percentage: 32
-      },
-      {
-        platform: "twitter",
-        revenue: 1477,
-        percentage: 10
+    const records = await this.getMonetizationRecords(userId);
+    
+    // Group by platform
+    const platformMap = new Map<string, number>();
+    
+    records.forEach(record => {
+      if (!platformMap.has(record.platform)) {
+        platformMap.set(record.platform, 0);
       }
-    ];
+      
+      platformMap.set(record.platform, platformMap.get(record.platform)! + record.amount);
+    });
+    
+    // Calculate total revenue
+    const totalRevenue = Array.from(platformMap.values()).reduce((sum, amount) => sum + amount, 0);
+    
+    // Convert to array with percentages
+    return Array.from(platformMap.entries())
+      .map(([platform, revenue]) => ({
+        platform,
+        revenue,
+        percentage: totalRevenue > 0 ? revenue / totalRevenue : 0,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
   }
 }
 
-export const storage = new MemStorage();
+// Export the singleton storage instance
+// Use DatabaseStorage if DATABASE_URL is available, otherwise fallback to MemStorage
+import { DatabaseStorage } from './DatabaseStorage';
+
+// Decide which storage implementation to use
+const usePostgres = !!process.env.DATABASE_URL;
+export const storage = usePostgres ? new DatabaseStorage() : new MemStorage();
