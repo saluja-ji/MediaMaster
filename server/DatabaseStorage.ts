@@ -1,7 +1,8 @@
 import { db } from './db';
 import { 
   users, posts, socialAccounts, analyticsData,
-  engageActivities, insights, monetizationRecords
+  engageActivities, insights, monetizationRecords,
+  brandPartnerships
 } from '@shared/schema';
 import { eq, and, gte, lte, desc, asc } from 'drizzle-orm';
 import { 
@@ -9,7 +10,7 @@ import {
   Post, InsertPost, AnalyticsData, InsertAnalyticsData,
   EngageActivity, InsertEngageActivity, Insight, InsertInsight,
   MonetizationRecord, InsertMonetizationRecord, LoginCredentials,
-  IStorage
+  BrandPartnership, InsertBrandPartnership, IStorage
 } from './storage';
 
 export class DatabaseStorage implements IStorage {
@@ -497,5 +498,64 @@ export class DatabaseStorage implements IStorage {
         percentage: totalRevenue > 0 ? revenue / totalRevenue : 0,
       }))
       .sort((a, b) => b.revenue - a.revenue);
+  }
+
+  // Brand partnership operations
+  async getBrandPartnerships(userId: number, filters?: {
+    industry?: string;
+    applicationStatus?: string;
+    minMatchScore?: number;
+  }): Promise<BrandPartnership[]> {
+    let query = db
+      .select()
+      .from(brandPartnerships)
+      .where(eq(brandPartnerships.userId, userId));
+    
+    if (filters?.industry) {
+      query = query.where(eq(brandPartnerships.industry, filters.industry));
+    }
+    
+    if (filters?.applicationStatus) {
+      query = query.where(eq(brandPartnerships.applicationStatus, filters.applicationStatus));
+    }
+    
+    if (filters?.minMatchScore && filters.minMatchScore > 0) {
+      query = query.where(gte(brandPartnerships.matchScore, filters.minMatchScore));
+    }
+    
+    return query.orderBy(desc(brandPartnerships.matchScore));
+  }
+  
+  async getBrandPartnership(id: number): Promise<BrandPartnership | undefined> {
+    const [partnership] = await db
+      .select()
+      .from(brandPartnerships)
+      .where(eq(brandPartnerships.id, id));
+    return partnership || undefined;
+  }
+  
+  async createBrandPartnership(partnership: InsertBrandPartnership): Promise<BrandPartnership> {
+    const [newPartnership] = await db
+      .insert(brandPartnerships)
+      .values(partnership)
+      .returning();
+    return newPartnership;
+  }
+  
+  async updateBrandPartnership(id: number, partnership: Partial<BrandPartnership>): Promise<BrandPartnership | undefined> {
+    const [updatedPartnership] = await db
+      .update(brandPartnerships)
+      .set(partnership)
+      .where(eq(brandPartnerships.id, id))
+      .returning();
+    return updatedPartnership || undefined;
+  }
+  
+  async deleteBrandPartnership(id: number): Promise<boolean> {
+    const [deletedPartnership] = await db
+      .delete(brandPartnerships)
+      .where(eq(brandPartnerships.id, id))
+      .returning();
+    return !!deletedPartnership;
   }
 }

@@ -16,6 +16,8 @@ export type Insight = schema.Insight;
 export type InsertInsight = schema.InsertInsight;
 export type MonetizationRecord = schema.MonetizationRecord;
 export type InsertMonetizationRecord = schema.InsertMonetizationRecord;
+export type BrandPartnership = schema.BrandPartnership;
+export type InsertBrandPartnership = schema.InsertBrandPartnership;
 export type LoginCredentials = schema.LoginCredentials;
 
 export interface IStorage {
@@ -83,6 +85,17 @@ export interface IStorage {
   }): Promise<MonetizationRecord[]>;
   createMonetizationRecord(record: InsertMonetizationRecord): Promise<MonetizationRecord>;
   
+  // Brand partnership operations
+  getBrandPartnerships(userId: number, filters?: {
+    industry?: string;
+    applicationStatus?: string;
+    minMatchScore?: number;
+  }): Promise<BrandPartnership[]>;
+  getBrandPartnership(id: number): Promise<BrandPartnership | undefined>;
+  createBrandPartnership(partnership: InsertBrandPartnership): Promise<BrandPartnership>;
+  updateBrandPartnership(id: number, partnership: Partial<BrandPartnership>): Promise<BrandPartnership | undefined>;
+  deleteBrandPartnership(id: number): Promise<boolean>;
+  
   // Dashboard data
   getDashboardStats(userId: number): Promise<{
     totalFollowers: number;
@@ -119,6 +132,7 @@ export class MemStorage implements IStorage {
   private engageActivities: Map<number, EngageActivity>;
   private insights: Map<number, Insight>;
   private monetizationRecords: Map<number, MonetizationRecord>;
+  private brandPartnerships: Map<number, BrandPartnership>;
   
   private userId: number = 1;
   private accountId: number = 1;
@@ -127,6 +141,7 @@ export class MemStorage implements IStorage {
   private activityId: number = 1;
   private insightId: number = 1;
   private monetizationId: number = 1;
+  private partnershipId: number = 1;
   
   constructor() {
     this.users = new Map();
@@ -136,6 +151,7 @@ export class MemStorage implements IStorage {
     this.engageActivities = new Map();
     this.insights = new Map();
     this.monetizationRecords = new Map();
+    this.brandPartnerships = new Map();
     
     // Create a demo user
     const demoUser: User = {
@@ -758,6 +774,75 @@ export class MemStorage implements IStorage {
         percentage: totalRevenue > 0 ? revenue / totalRevenue : 0,
       }))
       .sort((a, b) => b.revenue - a.revenue);
+  }
+
+  // Brand partnership operations
+  async getBrandPartnerships(userId: number, filters?: {
+    industry?: string;
+    applicationStatus?: string;
+    minMatchScore?: number;
+  }): Promise<BrandPartnership[]> {
+    let partnerships = Array.from(this.brandPartnerships.values()).filter(
+      (partnership) => partnership.userId === userId,
+    );
+    
+    if (filters) {
+      if (filters.industry) {
+        partnerships = partnerships.filter(partnership => partnership.industry === filters.industry);
+      }
+      
+      if (filters.applicationStatus) {
+        partnerships = partnerships.filter(partnership => partnership.applicationStatus === filters.applicationStatus);
+      }
+      
+      if (filters.minMatchScore) {
+        partnerships = partnerships.filter(partnership => partnership.matchScore >= filters.minMatchScore!);
+      }
+    }
+    
+    return partnerships;
+  }
+  
+  async getBrandPartnership(id: number): Promise<BrandPartnership | undefined> {
+    return this.brandPartnerships.get(id);
+  }
+  
+  async createBrandPartnership(partnership: InsertBrandPartnership): Promise<BrandPartnership> {
+    const newPartnership: BrandPartnership = {
+      ...partnership,
+      id: this.partnershipId++,
+      // Handle optional fields
+      brandWebsite: partnership.brandWebsite || null,
+      brandLogoUrl: partnership.brandLogoUrl || null,
+      targetAudience: partnership.targetAudience || null,
+      partnershipTypes: partnership.partnershipTypes || [],
+      minBudget: partnership.minBudget || null,
+      maxBudget: partnership.maxBudget || null,
+      currency: partnership.currency || "USD",
+      requirements: partnership.requirements || null,
+      applicationStatus: partnership.applicationStatus || "not_applied",
+      applicationDate: partnership.applicationDate || null,
+      matchScore: partnership.matchScore || 0,
+      matchReasoning: partnership.matchReasoning || null,
+      contactEmail: partnership.contactEmail || null,
+      contactName: partnership.contactName || null,
+      notes: partnership.notes || null,
+    };
+    this.brandPartnerships.set(newPartnership.id, newPartnership);
+    return newPartnership;
+  }
+  
+  async updateBrandPartnership(id: number, partnership: Partial<BrandPartnership>): Promise<BrandPartnership | undefined> {
+    const existing = this.brandPartnerships.get(id);
+    if (!existing) return undefined;
+    
+    const updated: BrandPartnership = { ...existing, ...partnership };
+    this.brandPartnerships.set(id, updated);
+    return updated;
+  }
+  
+  async deleteBrandPartnership(id: number): Promise<boolean> {
+    return this.brandPartnerships.delete(id);
   }
 }
 
