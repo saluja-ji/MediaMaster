@@ -201,10 +201,25 @@ export class MemStorage implements IStorage {
         userId: demoUser.id,
         platform,
         username: `alex_${platform}`,
+        displayName: `Alex Morgan on ${platform.charAt(0).toUpperCase() + platform.slice(1)}`,
+        profileUrl: `https://${platform}.com/alex_${platform}`,
+        avatarUrl: `https://randomuser.me/api/portraits/women/${this.accountId + 10}.jpg`,
+        bio: `Digital marketing expert and content creator on ${platform}`,
+        followerCount: 10000 + Math.floor(Math.random() * 15000),
+        followingCount: 1000 + Math.floor(Math.random() * 2000),
         accessToken: `sample_token_${platform}`,
         refreshToken: `sample_refresh_${platform}`,
         tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         isActive: true,
+        isPrimary: platform === "instagram", // Make Instagram the primary account
+        lastSynced: new Date(),
+        accountCategory: platform === "facebook" ? "business" : "creator",
+        verificationStatus: platform === "twitter" ? "verified" : "unverified",
+        accountCreatedAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 year ago
+        accountHealth: 0.8 + (Math.random() * 0.2), // 0.8-1.0 range
+        apiVersion: "v2",
+        webhookUrl: null,
+        scopes: ["read", "write", "profile"],
       };
       this.socialAccounts.set(account.id, account);
     });
@@ -226,6 +241,8 @@ export class MemStorage implements IStorage {
       ...user,
       id: this.userId++,
       createdAt: new Date(),
+      avatarUrl: user.avatarUrl || null,
+      preferences: user.preferences || null,
     };
     this.users.set(newUser.id, newUser);
     return newUser;
@@ -260,6 +277,22 @@ export class MemStorage implements IStorage {
     const newAccount: SocialAccount = {
       ...account,
       id: this.accountId++,
+      // Set default values for all new fields
+      displayName: account.displayName || null,
+      profileUrl: account.profileUrl || null,
+      avatarUrl: account.avatarUrl || null,
+      bio: account.bio || null,
+      followerCount: account.followerCount || 0,
+      followingCount: account.followingCount || 0,
+      isPrimary: account.isPrimary || false,
+      lastSynced: account.lastSynced || null,
+      accountCategory: account.accountCategory || null,
+      verificationStatus: account.verificationStatus || null,
+      accountCreatedAt: account.accountCreatedAt || null,
+      accountHealth: account.accountHealth || null,
+      apiVersion: account.apiVersion || null,
+      webhookUrl: account.webhookUrl || null,
+      scopes: account.scopes || null,
     };
     this.socialAccounts.set(newAccount.id, newAccount);
     return newAccount;
@@ -330,6 +363,22 @@ export class MemStorage implements IStorage {
       id: this.postId++,
       engagementScore: Math.random() * 100, // Simulated AI score
       shadowbanRisk: Math.random() * 5, // Simulated AI risk assessment
+      audienceMatch: Math.random() * 0.8 + 0.2, // Random 0.2-1.0 value
+      publishedAt: post.publishedAt || null,
+      mediaUrls: post.mediaUrls || null,
+      scheduledAt: post.scheduledAt || null,
+      tags: post.tags || null,
+      categories: post.categories || null,
+      socialAccountId: post.socialAccountId || null,
+      isMonetized: post.isMonetized || false,
+      monetizationDetails: post.monetizationDetails || null,
+      aiGenerated: post.aiGenerated || false,
+      aiPrompt: post.aiPrompt || null,
+      postUrl: post.postUrl || null,
+      postAnalysis: post.postAnalysis || null,
+      visibility: post.visibility || "public",
+      lastUpdated: new Date(),
+      externalPostId: post.externalPostId || null,
     };
     this.posts.set(newPost.id, newPost);
     return newPost;
@@ -384,6 +433,29 @@ export class MemStorage implements IStorage {
     const newData: AnalyticsData = {
       ...data,
       id: this.analyticsId++,
+      socialAccountId: data.socialAccountId || null,
+      postId: data.postId || null,
+      likes: data.likes || null,
+      comments: data.comments || null,
+      shares: data.shares || null,
+      saves: data.saves || null,
+      clicks: data.clicks || null,
+      impressions: data.impressions || null,
+      reach: data.reach || null,
+      engagement: data.engagement || null,
+      engagementRate: data.engagementRate || null,
+      followerGain: data.followerGain || null,
+      followerLoss: data.followerLoss || null,
+      videoViews: data.videoViews || null,
+      videoCompletionRate: data.videoCompletionRate || null,
+      averageViewDuration: data.averageViewDuration || null,
+      totalViewDuration: data.totalViewDuration || null,
+      demographics: data.demographics || null,
+      topLocations: data.topLocations || null,
+      topAgeGroup: data.topAgeGroup || null,
+      topGender: data.topGender || null,
+      sentiment: data.sentiment || null,
+      comparisonToAvg: data.comparisonToAvg || null,
     };
     this.analyticsData.set(newData.id, newData);
     return newData;
@@ -426,6 +498,11 @@ export class MemStorage implements IStorage {
       ...activity,
       id: this.activityId++,
       performedAt: new Date(),
+      socialAccountId: activity.socialAccountId || null,
+      content: activity.content || null,
+      postId: activity.postId || null,
+      targetUsername: activity.targetUsername || null,
+      targetContent: activity.targetContent || null,
     };
     this.engageActivities.set(newActivity.id, newActivity);
     return newActivity;
@@ -465,6 +542,10 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       isRead: false,
       isApplied: false,
+      socialAccountId: insight.socialAccountId || null,
+      severity: insight.severity || null,
+      relatedPostId: insight.relatedPostId || null,
+      metadata: insight.metadata || null
     };
     this.insights.set(newInsight.id, newInsight);
     return newInsight;
@@ -515,6 +596,32 @@ export class MemStorage implements IStorage {
     const newRecord: MonetizationRecord = {
       ...record,
       id: this.monetizationId++,
+      status: record.status || null,
+      tags: record.tags || null,
+      postId: record.postId || null,
+      currency: record.currency || null,
+      transactionId: record.transactionId || null,
+      paymentMethod: record.paymentMethod || null,
+      accountNumber: record.accountNumber || null,
+      commission: record.commission || null,
+      referredBy: record.referredBy || null,
+      campaignId: record.campaignId || null,
+      campaignName: record.campaignName || null,
+      partnerName: record.partnerName || null,
+      contractId: record.contractId || null,
+      convertedFrom: record.convertedFrom || null,
+      conversionUrl: record.conversionUrl || null,
+      conversionRate: record.conversionRate || null,
+      impressions: record.impressions || null,
+      clicks: record.clicks || null,
+      ctr: record.ctr || null,
+      costPerClick: record.costPerClick || null,
+      costPerMille: record.costPerMille || null,
+      adSpend: record.adSpend || null,
+      roi: record.roi || null,
+      profitMargin: record.profitMargin || null,
+      notes: record.notes || null,
+      metrics: record.metrics || null
     };
     this.monetizationRecords.set(newRecord.id, newRecord);
     return newRecord;
