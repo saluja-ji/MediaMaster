@@ -430,6 +430,102 @@ export async function generateContentCalendar(data: {
 }
 
 /**
+ * Generates brand partnership matches based on creator profile and content
+ */
+export interface BrandPartnershipMatch {
+  brandName: string;
+  industry: string;
+  productCategories: string[];
+  partnershipTypes: string[];
+  minBudget: number;
+  maxBudget: number;
+  targetAudience: {
+    demographics: string[];
+    interests: string[];
+    platforms: string[];
+  };
+  requirements: {
+    minFollowers: number;
+    minEngagementRate: number;
+    contentTypes: string[];
+  };
+  matchScore: number;
+  matchReasoning: string;
+  brandWebsite?: string;
+  contactEmail?: string;
+}
+
+export async function generateBrandPartnershipMatches(data: {
+  userProfile: {
+    content: string[];
+    platforms: string[];
+    audienceSize: number;
+    engagementRate: number;
+    niche: string;
+    audienceDescription: string;
+    previousPartnerships?: string[];
+  };
+  preferredIndustries?: string[];
+  preferredPartnershipTypes?: string[];
+  count?: number;
+}): Promise<BrandPartnershipMatch[]> {
+  try {
+    const count = data.count || 5;
+    const prompt = `
+      Generate ${count} brand partnership matches for a social media creator with the following profile:
+      
+      CONTENT TOPICS: ${data.userProfile.content.join(', ')}
+      PLATFORMS: ${data.userProfile.platforms.join(', ')}
+      AUDIENCE SIZE: ${data.userProfile.audienceSize}
+      ENGAGEMENT RATE: ${data.userProfile.engagementRate}%
+      NICHE: ${data.userProfile.niche}
+      AUDIENCE DESCRIPTION: ${data.userProfile.audienceDescription}
+      ${data.userProfile.previousPartnerships ? 
+        `PREVIOUS PARTNERSHIPS: ${data.userProfile.previousPartnerships.join(', ')}` : ''}
+      ${data.preferredIndustries ? 
+        `PREFERRED INDUSTRIES: ${data.preferredIndustries.join(', ')}` : ''}
+      ${data.preferredPartnershipTypes ? 
+        `PREFERRED PARTNERSHIP TYPES: ${data.preferredPartnershipTypes.join(', ')}` : ''}
+      
+      Please provide results in JSON format as an array of brand partnership matches, each with:
+      - brandName: Name of the brand
+      - industry: Brand's industry
+      - productCategories: Array of product categories the brand offers
+      - partnershipTypes: Array of possible partnership types (affiliate, sponsored, ambassador, etc.)
+      - minBudget: Minimum partnership budget estimate
+      - maxBudget: Maximum partnership budget estimate
+      - targetAudience: Object with demographics, interests, and platforms arrays
+      - requirements: Object with minFollowers, minEngagementRate, and contentTypes array
+      - matchScore: Number from 0-1 indicating match quality
+      - matchReasoning: Short explanation of why this is a good match
+      - brandWebsite: Optional URL for the brand
+      - contactEmail: Optional contact email for partnerships
+    `;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are an AI expert in brand partnerships and influencer marketing."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    const result = JSON.parse(response.choices[0].message.content);
+    return result.matches || [];
+  } catch (error) {
+    console.error("Error generating brand partnership matches with OpenAI:", error);
+    throw new Error("Unable to generate brand partnership matches. Please check your OpenAI API key and try again.");
+  }
+}
+
+/**
  * Analyzes competitor profiles to generate strategic insights
  */
 export async function analyzeCompetitors(data: {

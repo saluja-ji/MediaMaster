@@ -2,8 +2,23 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import * as z from "zod";
-import { insertPostSchema, extendedPostSchema, insertSocialAccountSchema, insertUserSchema, insertMonetizationRecordSchema, loginSchema, userPreferencesSchema } from "@shared/schema";
-import { analyzeContent, generateAutoReply, generateMonetizationSuggestions, generateInsightsFromAnalytics } from "./openai";
+import { 
+  insertPostSchema, 
+  extendedPostSchema, 
+  insertSocialAccountSchema, 
+  insertUserSchema, 
+  insertMonetizationRecordSchema, 
+  insertBrandPartnershipSchema,
+  loginSchema, 
+  userPreferencesSchema 
+} from "@shared/schema";
+import { 
+  analyzeContent, 
+  generateAutoReply, 
+  generateMonetizationSuggestions, 
+  generateInsightsFromAnalytics,
+  generateBrandPartnershipMatches
+} from "./openai";
 import session from "express-session";
 import MemoryStore from "memorystore";
 

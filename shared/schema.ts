@@ -257,6 +257,9 @@ export type InsertInsight = z.infer<typeof insertInsightSchema>;
 export type MonetizationRecord = typeof monetizationRecords.$inferSelect;
 export type InsertMonetizationRecord = z.infer<typeof insertMonetizationRecordSchema>;
 
+export type BrandPartnership = typeof brandPartnerships.$inferSelect;
+export type InsertBrandPartnership = z.infer<typeof insertBrandPartnershipSchema>;
+
 // Auth Schemas
 export const loginSchema = z.object({
   username: z.string().min(3),
@@ -264,6 +267,38 @@ export const loginSchema = z.object({
 });
 
 export type LoginCredentials = z.infer<typeof loginSchema>;
+
+// Brand partnerships table
+export const brandPartnerships = pgTable("brand_partnerships", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  brandName: text("brand_name").notNull(),
+  brandWebsite: text("brand_website"),
+  brandLogoUrl: text("brand_logo_url"),
+  industry: text("industry").notNull(),
+  productCategories: text("product_categories").array(),
+  targetAudience: jsonb("target_audience"), // Demographics, interests, etc.
+  partnershipTypes: text("partnership_types").array(), // Affiliate, sponsored, ambassador, etc.
+  minBudget: real("min_budget"),
+  maxBudget: real("max_budget"),
+  currency: text("currency").default("USD"),
+  requirements: jsonb("requirements"), // Follower count, engagement rate, etc.
+  applicationStatus: text("application_status").default("not_applied"), // not_applied, applied, approved, rejected, active, completed
+  applicationDate: timestamp("application_date"),
+  matchScore: real("match_score"), // AI-calculated match percentage
+  matchReasoning: text("match_reasoning"), // Explanation of why this is a good match
+  contactEmail: text("contact_email"),
+  contactName: text("contact_name"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertBrandPartnershipSchema = createInsertSchema(brandPartnerships).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
 // Platform type definition
 export const platformEnum = z.enum([
