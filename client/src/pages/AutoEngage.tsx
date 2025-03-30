@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
-  Robot, 
+  Bot, 
   MessageSquare, 
   Heart, 
   UserPlus, 
@@ -116,7 +116,7 @@ export default function AutoEngage() {
       case 'follow':
         return <UserPlus className="h-5 w-5 text-purple-500" />;
       default:
-        return <Robot className="h-5 w-5 text-gray-500" />;
+        return <Bot className="h-5 w-5 text-gray-500" />;
     }
   };
 
@@ -195,7 +195,7 @@ export default function AutoEngage() {
           <Card>
             <CardHeader className="px-6 py-4 flex items-center justify-between space-y-0">
               <CardTitle className="text-xl font-semibold flex items-center">
-                <Robot className="mr-2 h-5 w-5 text-primary-500" />
+                <Bot className="mr-2 h-5 w-5 text-primary-500" />
                 Auto-Engage Activities
               </CardTitle>
               <div className="flex items-center space-x-2">
@@ -267,7 +267,7 @@ export default function AutoEngage() {
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <Robot className="h-12 w-12 text-gray-300 mb-4" />
+                  <Bot className="h-12 w-12 text-gray-300 mb-4" />
                   <p className="text-gray-500">No auto-engage activities yet</p>
                   <p className="text-sm text-gray-400 mt-1">Configure auto-engage to start automated interactions</p>
                 </div>

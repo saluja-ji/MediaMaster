@@ -76,7 +76,7 @@ export default function AutoEngageActivity({
           </div>
         ) : activities.length === 0 ? (
           <div className="text-center py-8">
-            <Robot className="mx-auto h-12 w-12 text-gray-300" />
+            <Bot className="mx-auto h-12 w-12 text-gray-300" />
             <p className="mt-4 text-gray-500">No recent activities</p>
             <p className="text-sm text-gray-400">Configure Auto-Engage to start automating interactions</p>
           </div>

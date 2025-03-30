@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { DollarSign, ShoppingBag, PresentationChart, ArrowUp } from "lucide-react";
+import { DollarSign, ShoppingBag, BarChart, ArrowUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 
@@ -84,7 +84,7 @@ export default function MonetizationPanel({ data, loading = false }: Monetizatio
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-500">
-                    <PresentationChart className="h-5 w-5" />
+                    <BarChart className="h-5 w-5" />
                   </div>
                 </div>
                 <div className="ml-3">
