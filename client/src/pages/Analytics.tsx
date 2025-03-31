@@ -21,10 +21,16 @@ import {
   ArrowDown,
   Calendar,
   Clock,
-  Zap
+  Zap,
+  FileText,
+  Brain,
+  UserPlus
 } from "lucide-react";
 import { FaTwitter, FaInstagram, FaFacebook, FaLinkedin, FaTiktok, FaYoutube } from "react-icons/fa";
 import { format, subDays, subMonths } from "date-fns";
+import { PerformanceReportGenerator } from "../components/analytics/PerformanceReportGenerator";
+import { EngagementModelTrainer } from "../components/ai/EngagementModelTrainer";
+import { CreatorCollaborationFinder } from "../components/collaboration/CreatorCollaborationFinder";
 
 // Sample data for the analytics charts
 const engagementData = [
@@ -165,10 +171,13 @@ export default function Analytics() {
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="w-full md:w-auto">
-          <TabsList className="grid grid-cols-3 w-full md:w-[360px]">
+          <TabsList className="grid grid-cols-6 w-full md:w-[600px]">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="engagement">Engagement</TabsTrigger>
             <TabsTrigger value="audience">Audience</TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center"><FileText className="h-4 w-4 mr-1" /> Reports</TabsTrigger>
+            <TabsTrigger value="ai-model" className="flex items-center"><Brain className="h-4 w-4 mr-1" /> AI Model</TabsTrigger>
+            <TabsTrigger value="collaborations" className="flex items-center"><UserPlus className="h-4 w-4 mr-1" /> Collabs</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -892,6 +901,21 @@ export default function Analytics() {
             </div>
           </CardContent>
         </Card>
+      </TabsContent>
+
+      {/* New Reports Tab */}
+      <TabsContent value="reports" className="mt-0 space-y-6">
+        <PerformanceReportGenerator />
+      </TabsContent>
+
+      {/* New AI Model Tab */}
+      <TabsContent value="ai-model" className="mt-0 space-y-6">
+        <EngagementModelTrainer />
+      </TabsContent>
+
+      {/* New Collaborations Tab */}
+      <TabsContent value="collaborations" className="mt-0 space-y-6">
+        <CreatorCollaborationFinder />
       </TabsContent>
     </div>
   );

@@ -850,6 +850,6 @@ export class MemStorage implements IStorage {
 // Use DatabaseStorage if DATABASE_URL is available, otherwise fallback to MemStorage
 import { DatabaseStorage } from './DatabaseStorage';
 
-// Decide which storage implementation to use
-const usePostgres = !!process.env.DATABASE_URL;
-export const storage = usePostgres ? new DatabaseStorage() : new MemStorage();
+// Use the PostgreSQL database storage by default when available
+const databaseEnabled = process.env.DATABASE_URL !== undefined;
+export const storage = databaseEnabled ? new DatabaseStorage() : new MemStorage();

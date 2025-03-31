@@ -1,122 +1,85 @@
-# Docker Deployment Instructions
+# Docker Deployment Guide for MediaMaster
 
-This document provides detailed instructions for deploying the Social Media AI Platform using Docker.
+This document provides detailed instructions for deploying MediaMaster using Docker in production environments.
 
 ## Prerequisites
 
-- Docker installed on your server
-- Docker Compose installed on your server
-- OpenAI API Key
+- Docker and Docker Compose installed on your server
+- A domain name (optional for HTTPS setup)
+- OpenAI API key
+- Basic knowledge of server administration
 
-## Basic Deployment
+## Deployment Steps
 
-1. Clone your repository on the server:
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/saluja-ji/MediaMaster.git
+cd MediaMaster
+```
+
+### 2. Configure Environment Variables
+
+Create a `.env` file from the example:
+
+```bash
+cp .env.example .env
+```
+
+Edit the `.env` file and configure the following variables:
+- `OPENAI_API_KEY`: Your OpenAI API key
+- `NODE_ENV`: Set to `production`
+- `PORT`: The port to run the application on (default is 5000)
+- `DATABASE_URL`: PostgreSQL connection string (the docker-compose setup uses default credentials)
+
+### 3. Build and Start the Containers
+
+```bash
+docker-compose up -d
+```
+
+This will start:
+- The MediaMaster application container
+- A PostgreSQL database container
+- Apply database migrations automatically
+
+### 4. Verify Deployment
+
+Access the application at `http://your-server-ip:5000`
+
+### 5. Setting Up HTTPS with Nginx (Optional)
+
+For production deployments, it's recommended to use HTTPS. Here's how to set it up with Nginx as a reverse proxy:
+
+1. Install Nginx on your server:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY_NAME.git
-   cd YOUR_REPOSITORY_NAME
+   sudo apt update
+   sudo apt install nginx
    ```
 
-2. Create a `.env` file:
+2. Install Certbot for Let's Encrypt certificates:
    ```bash
-   cp .env.example .env
-   ```
-   
-3. Edit the `.env` file and add your OpenAI API key:
-   ```
-   NODE_ENV=production
-   PORT=5000
-   OPENAI_API_KEY=your_openai_api_key_here
+   sudo apt install certbot python3-certbot-nginx
    ```
 
-4. Build and start the Docker containers:
+3. Create an Nginx configuration file for your domain:
    ```bash
-   docker-compose up -d
+   sudo nano /etc/nginx/sites-available/mediamaster
    ```
 
-5. The application should now be running at http://your-server-ip:5000
-
-## Production Deployment with HTTPS
-
-For a production environment, you should use HTTPS. Here's how to set it up with Nginx as a reverse proxy:
-
-1. Create a new file called `docker-compose.prod.yml`:
-   ```yaml
-   version: '3.8'
-
-   services:
-     app:
-       build: .
-       restart: unless-stopped
-       environment:
-         - NODE_ENV=production
-         - PORT=5000
-         - OPENAI_API_KEY=${OPENAI_API_KEY}
-       volumes:
-         - app-data:/app/data
-       networks:
-         - app-network
-
-     nginx:
-       image: nginx:latest
-       ports:
-         - "80:80"
-         - "443:443"
-       volumes:
-         - ./nginx/conf:/etc/nginx/conf.d
-         - ./nginx/certbot/conf:/etc/letsencrypt
-         - ./nginx/certbot/www:/var/www/certbot
-       depends_on:
-         - app
-       networks:
-         - app-network
-       restart: unless-stopped
-
-     certbot:
-       image: certbot/certbot
-       volumes:
-         - ./nginx/certbot/conf:/etc/letsencrypt
-         - ./nginx/certbot/www:/var/www/certbot
-       entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-
-   volumes:
-     app-data:
-
-   networks:
-     app-network:
-   ```
-
-2. Create the Nginx configuration:
-   ```bash
-   mkdir -p nginx/conf
-   mkdir -p nginx/certbot/conf
-   mkdir -p nginx/certbot/www
-   ```
-
-3. Create a file called `nginx/conf/app.conf`:
-   ```
+4. Add the following configuration (replace with your domain):
+   ```nginx
    server {
        listen 80;
        server_name yourdomain.com www.yourdomain.com;
-       
-       location /.well-known/acme-challenge/ {
-           root /var/www/certbot;
-       }
-       
-       location / {
-           return 301 https://$host$request_uri;
-       }
-   }
 
-   server {
-       listen 443 ssl;
-       server_name yourdomain.com www.yourdomain.com;
-       
-       ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
-       ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
-       
        location / {
-           proxy_pass http://app:5000;
+           proxy_pass http://localhost:5000;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection 'upgrade';
            proxy_set_header Host $host;
+           proxy_cache_bypass $http_upgrade;
            proxy_set_header X-Real-IP $remote_addr;
            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
            proxy_set_header X-Forwarded-Proto $scheme;
@@ -124,46 +87,70 @@ For a production environment, you should use HTTPS. Here's how to set it up with
    }
    ```
 
-4. Initialize SSL certificates:
+5. Enable the site and test Nginx configuration:
    ```bash
-   docker-compose -f docker-compose.prod.yml up -d nginx
-   
-   # Get the certificates
-   docker-compose -f docker-compose.prod.yml run --rm certbot certonly --webroot --webroot-path=/var/www/certbot --email your-email@example.com --agree-tos --no-eff-email -d yourdomain.com -d www.yourdomain.com
-   
-   # Start all services
-   docker-compose -f docker-compose.prod.yml up -d
+   sudo ln -s /etc/nginx/sites-available/mediamaster /etc/nginx/sites-enabled/
+   sudo nginx -t
+   sudo systemctl reload nginx
    ```
 
-## Maintaining Your Deployment
-
-### Updating to a New Version
-
-1. Pull the latest changes:
+6. Obtain SSL certificates:
    ```bash
-   git pull
+   sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
    ```
 
-2. Rebuild and restart containers:
+7. Certbot will modify your Nginx configuration to include SSL settings and redirect HTTP to HTTPS.
+
+## Updating the Application
+
+To update the application to the latest version:
+
+```bash
+cd MediaMaster
+git pull
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+## Backup and Restore
+
+### Database Backup
+
+```bash
+docker exec mediamaster-db pg_dump -U postgres mediamaster > backup.sql
+```
+
+### Database Restore
+
+```bash
+cat backup.sql | docker exec -i mediamaster-db psql -U postgres -d mediamaster
+```
+
+## Troubleshooting
+
+1. Check container logs:
    ```bash
-   docker-compose up -d --build
+   docker-compose logs app
+   docker-compose logs db
    ```
 
-### Checking Logs
+2. Check if the containers are running:
+   ```bash
+   docker-compose ps
+   ```
 
-To check application logs:
-```bash
-docker-compose logs -f app
-```
+3. Check database connection:
+   ```bash
+   docker exec -it mediamaster-db psql -U postgres -d mediamaster -c "\l"
+   ```
 
-### Backup and Restore
+4. Restart the containers:
+   ```bash
+   docker-compose restart
+   ```
 
-To backup the data volume:
-```bash
-docker run --rm -v social-media-ai-platform_app-data:/data -v $(pwd):/backup alpine tar czf /backup/app-data-backup.tar.gz -C /data .
-```
-
-To restore the data volume:
-```bash
-docker run --rm -v social-media-ai-platform_app-data:/data -v $(pwd):/backup alpine sh -c "rm -rf /data/* && tar xzf /backup/app-data-backup.tar.gz -C /data"
-```
+5. If you encounter permission issues with the database volume, run:
+   ```bash
+   sudo chown -R 1000:1000 ./postgres-data
+   ```

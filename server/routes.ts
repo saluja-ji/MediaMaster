@@ -17,7 +17,10 @@ import {
   generateAutoReply, 
   generateMonetizationSuggestions, 
   generateInsightsFromAnalytics,
-  generateBrandPartnershipMatches
+  generateBrandPartnershipMatches,
+  generatePerformanceReport,
+  trainUserEngagementModel,
+  generateCreatorCollaborations
 } from "./openai";
 import session from "express-session";
 import MemoryStore from "memorystore";
@@ -472,6 +475,183 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(analysis);
     } catch (error) {
       res.status(500).json({ message: "Content analysis failed" });
+    }
+  });
+  
+  // One-click performance report
+  app.post("/api/performance-report", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { 
+        startDate, 
+        endDate, 
+        platforms 
+      } = req.body;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Date range is required" });
+      }
+      
+      // Get the necessary data for the report
+      const analyticsData = await storage.getAnalyticsData(userId, {
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        platform: platforms ? platforms[0] : undefined
+      });
+      
+      const posts = await storage.getPosts(userId, {
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        platform: platforms ? platforms[0] : undefined
+      });
+      
+      const socialAccounts = await storage.getSocialAccountsByUserId(userId);
+      
+      // Generate the report
+      const report = await generatePerformanceReport({
+        userId,
+        analyticsData,
+        posts,
+        socialAccounts,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        platforms
+      });
+      
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating performance report:", error);
+      res.status(500).json({ message: "Failed to generate performance report" });
+    }
+  });
+  
+  // AI model training on user-specific engagement patterns
+  app.post("/api/train-engagement-model", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { lookbackPeriod } = req.body;
+      
+      // Get the necessary data for model training
+      const posts = await storage.getPosts(userId);
+      const analyticsData = await storage.getAnalyticsData(userId);
+      const socialAccounts = await storage.getSocialAccountsByUserId(userId);
+      const engageActivities = await storage.getEngageActivities(userId);
+      
+      // Train the model
+      const model = await trainUserEngagementModel({
+        userId,
+        posts,
+        analyticsData,
+        socialAccounts,
+        engageActivities,
+        lookbackPeriod
+      });
+      
+      // Save the model insights
+      const insight = await storage.createInsight({
+        userId,
+        type: 'engagement-model',
+        title: 'New Engagement Model Trained',
+        description: `Your AI model has identified ${model.contentPatterns.highEngagement.topics.length} content topics that perform well with your audience.`,
+        severity: 'info',
+        metadata: model
+      });
+      
+      res.json({
+        success: true,
+        model,
+        insightId: insight.id
+      });
+    } catch (error) {
+      console.error("Error training engagement model:", error);
+      res.status(500).json({ message: "Failed to train engagement model" });
+    }
+  });
+  
+  // Creator collaboration suggestions
+  app.post("/api/creator-collaborations", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { 
+        preferredCollabTypes, 
+        preferredPlatforms, 
+        count 
+      } = req.body;
+      
+      // Get user profile data
+      const socialAccounts = await storage.getSocialAccountsByUserId(userId);
+      const posts = await storage.getPosts(userId);
+      const analyticsData = await storage.getAnalyticsData(userId);
+      
+      // Extract content topics from posts
+      const contentTopics = [...new Set(
+        posts
+          .filter(post => post.tags && post.tags.length > 0)
+          .flatMap(post => post.tags || [])
+      )];
+      
+      // Calculate total audience size and engagement rate
+      let totalFollowers = 0;
+      const platforms = [];
+      const niches = [];
+      
+      socialAccounts.forEach(account => {
+        totalFollowers += account.followerCount || 0;
+        if (account.platform) platforms.push(account.platform);
+        if (account.accountCategory) niches.push(account.accountCategory);
+      });
+      
+      // Calculate engagement rate
+      let totalEngagement = 0;
+      let totalImpressions = 0;
+      
+      analyticsData.forEach(data => {
+        totalEngagement += (data.likes || 0) + (data.comments || 0) + (data.shares || 0);
+        totalImpressions += data.impressions || 0;
+      });
+      
+      const engagementRate = totalImpressions > 0 ? 
+        (totalEngagement / totalImpressions) * 100 : 3.5; // Fallback to average rate
+      
+      // Extract audience demographics from analytics
+      const audienceDemographics = {};
+      analyticsData.forEach(data => {
+        if (data.audienceData) {
+          try {
+            const audienceData = typeof data.audienceData === 'string' ? 
+              JSON.parse(data.audienceData) : data.audienceData;
+            
+            // Merge demographics data
+            Object.entries(audienceData).forEach(([key, value]) => {
+              audienceDemographics[key] = audienceDemographics[key] || {};
+              Object.assign(audienceDemographics[key], value);
+            });
+          } catch (e) {
+            // Ignore JSON parse errors
+          }
+        }
+      });
+      
+      // Generate collaboration suggestions
+      const collaborations = await generateCreatorCollaborations({
+        userId,
+        userProfile: {
+          platforms: [...new Set(platforms)],
+          niches: [...new Set(niches)],
+          audienceSize: totalFollowers,
+          audienceDemographics,
+          contentTopics,
+          engagementRate
+        },
+        preferredCollabTypes,
+        preferredPlatforms,
+        count
+      });
+      
+      res.json(collaborations);
+    } catch (error) {
+      console.error("Error generating creator collaborations:", error);
+      res.status(500).json({ message: "Failed to generate creator collaboration suggestions" });
     }
   });
 

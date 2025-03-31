@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { Post } from "@shared/schema";
+import { Post, AnalyticsData, EngageActivity, SocialAccount } from "@shared/schema";
 import fs from "fs";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
@@ -589,5 +589,437 @@ export async function analyzeCompetitors(data: {
   } catch (error) {
     console.error("Error analyzing competitors with OpenAI:", error);
     throw new Error("Unable to analyze competitors. Please check your OpenAI API key and try again.");
+  }
+}
+
+/**
+ * Generate a comprehensive social media performance report in one click
+ */
+export interface PerformanceReport {
+  summary: {
+    overallScore: number;
+    topPerformingPlatform: string;
+    totalEngagement: number;
+    audienceGrowth: number;
+    conversionRate: number;
+    revenueGenerated: number;
+  };
+  platformBreakdown: Array<{
+    platform: string;
+    score: number;
+    engagement: number;
+    growth: number;
+    revenue: number;
+    topPost: {
+      content: string;
+      engagement: number;
+      date: string;
+    };
+    recommendations: string[];
+  }>;
+  insights: string[];
+  trends: {
+    improving: string[];
+    declining: string[];
+    opportunities: string[];
+  };
+  nextSteps: string[];
+  reportDate: string;
+}
+
+export async function generatePerformanceReport(data: {
+  userId: number;
+  analyticsData: AnalyticsData[];
+  posts: Post[];
+  socialAccounts: SocialAccount[];
+  startDate: Date;
+  endDate: Date;
+  platforms?: string[];
+}): Promise<PerformanceReport> {
+  try {
+    // Format data for better OpenAI analysis
+    const platforms = data.platforms || [...new Set(data.socialAccounts.map(acc => acc.platform))];
+    const platformAnalytics = platforms.map(platform => {
+      const platformData = data.analyticsData.filter(item => item.platform === platform);
+      const platformPosts = data.posts.filter(post => post.platform === platform);
+      
+      // Calculate platform engagement metrics
+      const totalLikes = platformData.reduce((sum, item) => sum + (item.likes || 0), 0);
+      const totalComments = platformData.reduce((sum, item) => sum + (item.comments || 0), 0);
+      const totalShares = platformData.reduce((sum, item) => sum + (item.shares || 0), 0);
+      const totalReach = platformData.reduce((sum, item) => sum + (item.reach || 0), 0);
+      
+      // Identify top post
+      let topPost = null;
+      if (platformPosts.length > 0) {
+        const postAnalytics = {};
+        
+        // Calculate engagement for each post
+        platformData.forEach(item => {
+          if (item.postId) {
+            postAnalytics[item.postId] = (postAnalytics[item.postId] || 0) + 
+              (item.likes || 0) + (item.comments || 0) + (item.shares || 0);
+          }
+        });
+        
+        // Find post with highest engagement
+        let maxEngagement = 0;
+        let topPostId = null;
+        
+        Object.entries(postAnalytics).forEach(([postId, engagement]) => {
+          if (engagement > maxEngagement) {
+            maxEngagement = engagement as number;
+            topPostId = parseInt(postId);
+          }
+        });
+        
+        if (topPostId) {
+          const post = platformPosts.find(p => p.id === topPostId);
+          if (post) {
+            topPost = {
+              id: post.id,
+              content: post.content.substring(0, 100) + (post.content.length > 100 ? '...' : ''),
+              engagement: maxEngagement,
+              date: post.publishedAt ? new Date(post.publishedAt).toISOString().split('T')[0] : 'N/A'
+            };
+          }
+        }
+      }
+      
+      return {
+        platform,
+        metrics: {
+          totalLikes,
+          totalComments,
+          totalShares,
+          totalReach,
+          totalPosts: platformPosts.length,
+          engagementRate: totalReach > 0 ? 
+            ((totalLikes + totalComments + totalShares) / totalReach * 100).toFixed(2) : 0
+        },
+        topPost
+      };
+    });
+    
+    const prompt = `
+      Generate a comprehensive social media performance report for the date range ${data.startDate.toISOString().split('T')[0]} to ${data.endDate.toISOString().split('T')[0]} with the following data:
+
+      PLATFORM ANALYTICS:
+      ${JSON.stringify(platformAnalytics, null, 2)}
+      
+      Provide a complete performance report in JSON format with these sections:
+      - summary: Overall performance metrics including overall score (0-100), top platform, total engagement, audience growth, conversion rate, and revenue
+      - platformBreakdown: Detail for each platform including performance score, metrics, top post, and 2-3 platform-specific recommendations
+      - insights: 3-5 key insights about overall performance
+      - trends: Lists of improving metrics, declining metrics, and opportunities
+      - nextSteps: 3-5 actionable recommendations to improve performance
+      - reportDate: Current date
+    `;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert social media analyst who creates detailed performance reports. Your reports are data-driven, insightful, and provide clear actionable recommendations."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    const result = JSON.parse(response.choices[0].message.content);
+    const today = new Date().toISOString().split('T')[0];
+    
+    return {
+      summary: result.summary || {
+        overallScore: 0,
+        topPerformingPlatform: platforms[0] || "instagram",
+        totalEngagement: 0,
+        audienceGrowth: 0,
+        conversionRate: 0,
+        revenueGenerated: 0
+      },
+      platformBreakdown: result.platformBreakdown || platforms.map(p => ({
+        platform: p,
+        score: 0,
+        engagement: 0,
+        growth: 0,
+        revenue: 0,
+        topPost: { content: "N/A", engagement: 0, date: today },
+        recommendations: ["Analyze platform-specific data to generate recommendations"]
+      })),
+      insights: result.insights || ["Insufficient data for detailed insights"],
+      trends: result.trends || {
+        improving: [],
+        declining: [],
+        opportunities: ["Collect more data for trend analysis"]
+      },
+      nextSteps: result.nextSteps || ["Set up consistent tracking for better analysis"],
+      reportDate: today
+    };
+  } catch (error) {
+    console.error("Error generating performance report with OpenAI:", error);
+    throw new Error("Unable to generate performance report. Please check your OpenAI API key and try again.");
+  }
+}
+
+/**
+ * Train an AI model on user-specific engagement patterns to provide personalized recommendations
+ */
+export interface UserEngagementModel {
+  modelId: string;
+  userId: number;
+  platforms: string[];
+  trainedOn: Date;
+  contentPatterns: {
+    highEngagement: {
+      topics: string[];
+      formats: string[];
+      timing: {
+        daysOfWeek: string[];
+        timeOfDay: string[];
+      };
+      contentAttributes: {
+        length: string;
+        mediaTypes: string[];
+        toneAttributes: string[];
+      };
+    };
+    lowEngagement: {
+      topics: string[];
+      formats: string[];
+      timing: {
+        daysOfWeek: string[];
+        timeOfDay: string[];
+      };
+      contentAttributes: {
+        length: string;
+        mediaTypes: string[];
+        toneAttributes: string[];
+      };
+    };
+  };
+  audienceAffinities: string[];
+  predictedPerformanceFactors: string[];
+}
+
+export async function trainUserEngagementModel(data: {
+  userId: number;
+  posts: Post[];
+  analyticsData: AnalyticsData[];
+  socialAccounts: SocialAccount[];
+  engageActivities: EngageActivity[];
+  lookbackPeriod?: number; // Days to look back, default 90
+}): Promise<UserEngagementModel> {
+  try {
+    const lookbackPeriod = data.lookbackPeriod || 90;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - lookbackPeriod);
+    
+    // Filter data to the lookback period
+    const recentPosts = data.posts.filter(post => 
+      post.publishedAt && new Date(post.publishedAt) >= cutoffDate
+    );
+    
+    // Categorize posts by engagement level
+    const postEngagements = {};
+    data.analyticsData.forEach(item => {
+      if (item.postId) {
+        const engagement = (item.likes || 0) + (item.comments || 0) + (item.shares || 0) + (item.saves || 0);
+        if (!postEngagements[item.postId]) {
+          postEngagements[item.postId] = 0;
+        }
+        postEngagements[item.postId] += engagement;
+      }
+    });
+    
+    // Sort posts by engagement
+    const postsWithEngagement = recentPosts.map(post => ({
+      id: post.id,
+      content: post.content,
+      platform: post.platform,
+      tags: post.tags || [],
+      publishTime: post.publishedAt ? new Date(post.publishedAt) : null,
+      dayOfWeek: post.publishedAt ? new Date(post.publishedAt).toLocaleDateString('en-US', { weekday: 'long' }) : null,
+      timeOfDay: post.publishedAt ? new Date(post.publishedAt).getHours() : null,
+      mediaCount: post.mediaUrls ? post.mediaUrls.length : 0,
+      contentLength: post.content ? post.content.length : 0,
+      engagement: postEngagements[post.id] || 0
+    }));
+    
+    // Sort by engagement and take top/bottom for analysis
+    postsWithEngagement.sort((a, b) => b.engagement - a.engagement);
+    const topPosts = postsWithEngagement.slice(0, Math.min(10, Math.ceil(postsWithEngagement.length / 3)));
+    const bottomPosts = postsWithEngagement.slice(-Math.min(10, Math.ceil(postsWithEngagement.length / 3)));
+
+    const prompt = `
+      Train a personalized engagement model for a social media user based on their historical content performance:
+
+      TOP PERFORMING POSTS:
+      ${JSON.stringify(topPosts, null, 2)}
+      
+      LOWEST PERFORMING POSTS:
+      ${JSON.stringify(bottomPosts, null, 2)}
+      
+      SOCIAL ACCOUNTS:
+      ${JSON.stringify(data.socialAccounts.map(acc => ({
+        platform: acc.platform,
+        accountCategory: acc.accountCategory,
+        followerCount: acc.followerCount,
+        accountHealth: acc.accountHealth
+      })), null, 2)}
+      
+      Based on this data, create a JSON model that identifies the unique engagement patterns for this specific user. The model should include:
+      
+      1. Content patterns that lead to high and low engagement (topics, formats, timing, content attributes)
+      2. Audience affinities (what the audience responds to most)
+      3. Predicted performance factors (what most strongly influences this user's content performance)
+      
+      Format as a complete JSON object with the structure matching UserEngagementModel.
+    `;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are an AI expert in social media analytics and machine learning. You specialize in identifying content performance patterns and creating personalized content strategy models."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    const result = JSON.parse(response.choices[0].message.content);
+    const modelId = `model-${data.userId}-${Date.now()}`;
+    
+    return {
+      modelId,
+      userId: data.userId,
+      platforms: [...new Set(data.socialAccounts.map(acc => acc.platform))],
+      trainedOn: new Date(),
+      contentPatterns: result.contentPatterns || {
+        highEngagement: {
+          topics: [],
+          formats: [],
+          timing: { daysOfWeek: [], timeOfDay: [] },
+          contentAttributes: { length: "medium", mediaTypes: [], toneAttributes: [] }
+        },
+        lowEngagement: {
+          topics: [],
+          formats: [],
+          timing: { daysOfWeek: [], timeOfDay: [] },
+          contentAttributes: { length: "medium", mediaTypes: [], toneAttributes: [] }
+        }
+      },
+      audienceAffinities: result.audienceAffinities || [],
+      predictedPerformanceFactors: result.predictedPerformanceFactors || []
+    };
+  } catch (error) {
+    console.error("Error training user engagement model with OpenAI:", error);
+    throw new Error("Unable to train engagement model. Please check your OpenAI API key and try again.");
+  }
+}
+
+/**
+ * Generate creator collaboration suggestions based on audience insights
+ */
+export interface CreatorCollaboration {
+  creatorName: string;
+  platform: string;
+  audienceSize: number;
+  engagementRate: number;
+  audienceOverlap: number;
+  contentSynergy: number;
+  niche: string;
+  topics: string[];
+  recommendedCollabTypes: string[];
+  potentialReach: number;
+  contactMethod?: string;
+  profileUrl?: string;
+  collaborationIdeas: string[];
+  benefitPrediction: {
+    followerGain: string;
+    engagementBoost: string;
+    monetizationPotential: string;
+  };
+  matchScore: number;
+}
+
+export async function generateCreatorCollaborations(data: {
+  userId: number;
+  userProfile: {
+    platforms: string[];
+    niches: string[];
+    audienceSize: number;
+    audienceDemographics: any;
+    contentTopics: string[];
+    engagementRate: number;
+  };
+  preferredCollabTypes?: string[];
+  preferredPlatforms?: string[];
+  count?: number;
+}): Promise<CreatorCollaboration[]> {
+  try {
+    const count = data.count || 5;
+    const platforms = data.preferredPlatforms || data.userProfile.platforms || ["instagram", "tiktok", "youtube"];
+    
+    const prompt = `
+      Generate ${count} creator collaboration suggestions based on this social media profile:
+      
+      PLATFORMS: ${platforms.join(', ')}
+      NICHES: ${data.userProfile.niches.join(', ')}
+      AUDIENCE SIZE: ${data.userProfile.audienceSize}
+      AUDIENCE DEMOGRAPHICS: ${JSON.stringify(data.userProfile.audienceDemographics)}
+      CONTENT TOPICS: ${data.userProfile.contentTopics.join(', ')}
+      ENGAGEMENT RATE: ${data.userProfile.engagementRate}%
+      ${data.preferredCollabTypes ? `PREFERRED COLLAB TYPES: ${data.preferredCollabTypes.join(', ')}` : ''}
+      
+      For each suggested collaboration, provide the following in JSON format:
+      - creatorName: A real creator name that would be a good match (use real, relevant creators in the space)
+      - platform: Primary platform of the creator
+      - audienceSize: Estimated audience size
+      - engagementRate: Estimated engagement rate
+      - audienceOverlap: Percentage overlap with user's audience (0-100)
+      - contentSynergy: Score indicating content compatibility (0-100)
+      - niche: Creator's primary niche
+      - topics: Array of creator's main content topics
+      - recommendedCollabTypes: Array of suggested collaboration formats
+      - potentialReach: Estimated total reach of the collaboration
+      - profileUrl: Creator's profile URL if available
+      - collaborationIdeas: Array of 2-3 specific collaboration ideas
+      - benefitPrediction: Predicted benefits including follower gain, engagement boost, and monetization potential
+      - matchScore: Overall compatibility score (0-100)
+      
+      Ensure suggestions are realistic, diverse in size/type, and provide specific, actionable collaboration ideas.
+    `;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are an AI expert in social media growth strategies and creator partnerships. You specialize in identifying synergistic collaboration opportunities between creators based on audience overlap and content compatibility."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    const result = JSON.parse(response.choices[0].message.content);
+    return result.collaborations || [];
+  } catch (error) {
+    console.error("Error generating creator collaborations with OpenAI:", error);
+    throw new Error("Unable to generate creator collaboration suggestions. Please check your OpenAI API key and try again.");
   }
 }

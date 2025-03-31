@@ -1,5 +1,4 @@
-import { apiRequest } from "@/lib/queryClient";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "./queryClient";
 import { 
   Post, 
   SocialAccount, 
@@ -259,5 +258,40 @@ export async function fetchMonetizationRecords(filters?: {
 export async function createMonetizationRecord(record: Partial<MonetizationRecord>) {
   const res = await apiRequest("POST", "/api/monetization", record);
   queryClient.invalidateQueries({ queryKey: ["/api/monetization"] });
+  return res.json();
+}
+
+// Performance Report API
+export async function generatePerformanceReport(data: {
+  startDate: Date;
+  endDate: Date;
+  platforms?: Platform[];
+}) {
+  const payload = {
+    startDate: data.startDate.toISOString(),
+    endDate: data.endDate.toISOString(),
+    platforms: data.platforms
+  };
+  
+  const res = await apiRequest("POST", "/api/performance-report", payload);
+  return res.json();
+}
+
+// AI Engagement Model API
+export async function trainEngagementModel(data: {
+  lookbackPeriod?: number;
+}) {
+  const res = await apiRequest("POST", "/api/train-engagement-model", data);
+  queryClient.invalidateQueries({ queryKey: ["/api/insights"] });
+  return res.json();
+}
+
+// Creator Collaboration API
+export async function generateCreatorCollaborations(data: {
+  preferredCollabTypes?: string[];
+  preferredPlatforms?: Platform[];
+  count?: number;
+}) {
+  const res = await apiRequest("POST", "/api/creator-collaborations", data);
   return res.json();
 }

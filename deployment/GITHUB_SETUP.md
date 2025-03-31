@@ -1,87 +1,208 @@
-# GitHub Setup Instructions
+# GitHub Setup Guide for MediaMaster
 
-## Setting Up Your GitHub Repository
+This guide walks you through setting up and deploying MediaMaster on GitHub.
 
-1. Create a new repository on GitHub (or use an existing one)
-2. Initialize Git in your local project folder (if not already done):
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   ```
-3. Connect your local repository to GitHub:
-   ```bash
-   git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY_NAME.git
-   git branch -M main
-   git push -u origin main
-   ```
+## Initial Repository Setup
 
-## Setting Up GitHub Secrets for CI/CD
+### 1. Create a GitHub Repository
 
-For the CI/CD workflow to work properly, you need to add the following secrets to your GitHub repository:
+1. Log in to your GitHub account
+2. Click on the "+" icon in the top right corner and select "New repository"
+3. Name your repository (e.g., "MediaMaster")
+4. Add a description: "AI-powered social media management platform"
+5. Choose visibility (public or private)
+6. Initialize with a README if starting from scratch
+7. Click "Create repository"
 
-1. Go to your repository on GitHub.
-2. Click on "Settings" > "Secrets and variables" > "Actions".
+### 2. Clone the Repository Locally
+
+```bash
+git clone https://github.com/yourusername/MediaMaster.git
+cd MediaMaster
+```
+
+## Setting Up the Project
+
+### 1. Initialize the Project
+
+If starting from scratch:
+
+```bash
+# Create main project structure
+mkdir -p client/src/{components,hooks,lib,pages} server shared deployment
+
+# Copy existing files if you already have the project
+# ...
+
+# Initialize git repository if not cloned
+git init
+```
+
+### 2. Configure Environment Variables
+
+1. Create a `.env.example` file with placeholder values
+2. Add `.env` to `.gitignore`
+
+### 3. Initial Commit and Push
+
+```bash
+git add .
+git commit -m "Initial project setup"
+git push -u origin main
+```
+
+## Setting Up GitHub Actions CI/CD
+
+### 1. Create a GitHub Actions Workflow
+
+Create a file at `.github/workflows/ci.yml`:
+
+```yaml
+name: MediaMaster CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run TypeScript checks
+      run: npm run typecheck
+    
+    - name: Run linter
+      run: npm run lint
+    
+    - name: Run tests
+      run: npm test
+      
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    # Add deployment steps here based on your hosting provider
+    # Examples:
+    # - Deploy to Vercel, Netlify, or custom server
+    # - Build Docker image and push to registry
+```
+
+### 2. Set Up GitHub Secrets
+
+For CI/CD to work with your application's secrets:
+
+1. Go to your GitHub repository settings
+2. Click on "Secrets and variables" → "Actions"
 3. Add the following secrets:
-   - `DOCKERHUB_USERNAME`: Your Docker Hub username
-   - `DOCKERHUB_TOKEN`: Your Docker Hub access token (generate from Docker Hub)
-   - `OPENAI_API_KEY`: Your OpenAI API key for testing and deployment
+   - `OPENAI_API_KEY`: Your OpenAI API key
+   - `DATABASE_URL`: PostgreSQL connection string
+   - Any other API keys or credentials needed
 
-## GitHub Pages Deployment (Optional)
+## Collaborating with Others
 
-If you want to deploy the frontend to GitHub Pages:
+### 1. Branch Strategy
 
-1. Add the following to your `package.json` file:
-   ```json
-   "homepage": "https://YOUR_USERNAME.github.io/YOUR_REPOSITORY_NAME",
-   "scripts": {
-     "predeploy": "npm run build",
-     "deploy": "gh-pages -d dist/client"
-   }
-   ```
+Adopt a branch strategy for collaboration:
 
-2. Install the gh-pages package:
+```bash
+# Create a feature branch
+git checkout -b feature/new-feature-name
+
+# Make changes, commit them
+git add .
+git commit -m "Implemented new feature"
+
+# Push to GitHub
+git push -u origin feature/new-feature-name
+```
+
+### 2. Pull Requests
+
+1. Go to your repository on GitHub
+2. Click "Pull requests" → "New pull request"
+3. Select your feature branch
+4. Add a title and description
+5. Request reviews from team members
+6. Create the pull request
+
+### 3. Code Reviews
+
+1. Assign reviewers to pull requests
+2. Use GitHub's review features for inline comments
+3. Approve changes or request modifications
+4. Merge when approved
+
+## Integration with Issue Tracking
+
+### 1. Create Issues
+
+1. Go to the "Issues" tab in your repository
+2. Click "New issue"
+3. Add a descriptive title and detailed description
+4. Assign labels, milestones, and assignees
+5. Reference issues in commit messages using #issue-number
+
+### 2. Project Boards
+
+Consider setting up a GitHub Project Board:
+
+1. Go to the "Projects" tab
+2. Create a new project
+3. Add columns like "To do", "In progress", "Review", "Done"
+4. Add issues to your project board
+
+## GitHub Pages (Optional)
+
+If you want to host documentation:
+
+1. Go to repository settings → Pages
+2. Choose a source branch
+3. Select folder (e.g., /docs)
+4. Save and your docs will be published at yourusername.github.io/MediaMaster
+
+## Automated Releases
+
+For versioning and releases:
+
+1. Create tags for releases:
    ```bash
-   npm install --save-dev gh-pages
+   git tag -a v1.0.0 -m "Initial stable release"
+   git push origin v1.0.0
    ```
 
-3. Create a GitHub workflow for GitHub Pages in `.github/workflows/gh-pages.yml`:
-   ```yaml
-   name: Deploy to GitHub Pages
+2. Go to "Releases" in your repository
+3. Create a new release from the tag
+4. Add release notes
+5. Publish the release
 
-   on:
-     push:
-       branches: [ main ]
+## Best Practices
 
-   jobs:
-     deploy:
-       runs-on: ubuntu-latest
-       steps:
-         - uses: actions/checkout@v3
-         - name: Setup Node.js
-           uses: actions/setup-node@v3
-           with:
-             node-version: '20'
-             cache: 'npm'
-         - name: Install dependencies
-           run: npm ci
-         - name: Build
-           run: npm run build
-         - name: Deploy to GitHub Pages
-           uses: JamesIves/github-pages-deploy-action@v4
-           with:
-             folder: dist/client
-   ```
+1. Keep sensitive information in GitHub Secrets, never commit them
+2. Use meaningful commit messages
+3. Reference issues in commits and pull requests
+4. Keep the main branch stable
+5. Document your code and APIs
+6. Regularly update dependencies using Dependabot
+7. Set up branch protection rules for important branches
 
-## Protecting Your Main Branch
+---
 
-To ensure code quality, you can protect your main branch:
-
-1. Go to your repository on GitHub.
-2. Click on "Settings" > "Branches".
-3. Under "Branch protection rules", click "Add rule".
-4. Enter "main" as the branch name pattern.
-5. Check options like "Require pull request reviews before merging" and "Require status checks to pass before merging".
-6. Save changes.
-
-This ensures that code must be reviewed and pass all CI checks before being merged into the main branch.
+Remember to customize this guide based on your specific needs and team structure. This provides a starting point for GitHub integration with your MediaMaster project.
