@@ -1,379 +1,489 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, QueryClient } from '@tanstack/react-query';
-import {
-  Card,
-  CardContent,
-  CardDescription,
+import { useMutation } from '@tanstack/react-query';
+import { 
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription, 
+  CardContent, 
   CardFooter,
-  CardHeader,
-  CardTitle
-} from '../ui/card';
-import {
+  Button,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  SelectGroup,
-  SelectLabel
-} from '../ui/select';
-import {
-  Button,
-  Checkbox,
   Separator,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  Badge
+  Badge,
+  Checkbox
 } from '../ui/index';
+import { Platform } from '@shared/schema';
+import { generateCreatorCollaborations } from '../../lib/api';
+import { CollaborationType } from '../../lib/types';
 import { 
-  SocialPlatform, 
-  CollaborationType,
-  CollaborationParams,
-  CreatorCollaboration 
-} from '../../lib/types';
-import { queryClient } from '../../lib/queryClient';
-import { apiRequest } from '../../lib/api';
+  Users, 
+  Search, 
+  CheckCircle, 
+  ArrowRight, 
+  BarChart3,
+  UserPlus, 
+  Star,
+  Zap,
+  MessageCircle,
+  Link as LinkIcon,
+  Mail,
+  UserCheck,
+  ArrowUpRight
+} from 'lucide-react';
 
-// Platform options for collaboration filtering
-const platformOptions: SocialPlatform[] = [
-  "instagram",
-  "twitter",
-  "facebook",
-  "linkedin",
-  "tiktok",
-  "youtube",
-  "medium",
-  "pinterest",
-  "snapchat",
-  "threads",
-  "reddit",
-  "discord",
-  "tumblr",
-  "whatsapp",
-  "telegram",
-  "mastodon"
+// Platforms available for selection
+const PLATFORM_OPTIONS: Platform[] = [
+  'instagram',
+  'twitter',
+  'facebook',
+  'linkedin',
+  'tiktok',
+  'youtube',
+  'pinterest',
+  'snapchat',
+  'threads',
+  'reddit',
+  'medium'
 ];
 
-// Collaboration type options
-const collaborationOptions: CollaborationType[] = [
-  "guest_post",
-  "co_created_content",
-  "live_stream",
-  "podcast_appearance",
-  "product_review",
-  "joint_contest",
-  "story_takeover",
-  "cross_promotion",
-  "series_collaboration",
-  "affiliate_partnership"
+// Collaboration types
+const COLLABORATION_OPTIONS: CollaborationType[] = [
+  'video',
+  'podcast',
+  'shoutout',
+  'giveaway',
+  'live',
+  'story_takeover',
+  'joint_post',
+  'guest_content',
+  'challenge',
+  'product_collab'
 ];
 
-const CreatorCollaborationFinder: React.FC = () => {
-  const [selectedPlatforms, setSelectedPlatforms] = useState<SocialPlatform[]>([]);
-  const [selectedCollabTypes, setSelectedCollabTypes] = useState<CollaborationType[]>([]);
-  const [count, setCount] = useState<number>(5);
+// Minimum audience size options
+const AUDIENCE_SIZE_OPTIONS = [
+  { label: 'Any size', value: 0 },
+  { label: '5K+', value: 5000 },
+  { label: '10K+', value: 10000 },
+  { label: '50K+', value: 50000 },
+  { label: '100K+', value: 100000 },
+  { label: '500K+', value: 500000 },
+  { label: '1M+', value: 1000000 }
+];
 
-  // Fetch collaboration suggestions based on selected filters
-  const { data: suggestions, isLoading, error, refetch } = useQuery<CreatorCollaboration[]>({
-    queryKey: ['/api/collaborations/suggestions'],
-    enabled: false
+// Audience overlap options
+const AUDIENCE_OVERLAP_OPTIONS = [
+  { label: 'Any overlap', value: 0 },
+  { label: 'Low overlap (for new audiences)', value: 20 },
+  { label: 'Medium overlap', value: 40 },
+  { label: 'High overlap (similar audiences)', value: 60 }
+];
+
+interface CreatorCollaboration {
+  creatorName: string;
+  platform: string;
+  audienceSize: number;
+  engagementRate: number;
+  audienceOverlap: number;
+  contentSynergy: number;
+  niche: string;
+  topics: string[];
+  recommendedCollabTypes: CollaborationType[];
+  potentialReach: number;
+  contactMethod?: string;
+  profileUrl?: string;
+  collaborationIdeas: string[];
+  benefitPrediction: {
+    followerGain: string;
+    engagementBoost: string;
+    monetizationPotential: string;
+  };
+  matchScore: number;
+}
+
+export const CreatorCollaborationFinder: React.FC = () => {
+  // Filter states
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([]);
+  const [minAudienceSize, setMinAudienceSize] = useState<number>(0);
+  const [preferredCollabTypes, setPreferredCollabTypes] = useState<CollaborationType[]>([]);
+  const [audienceOverlap, setAudienceOverlap] = useState<number>(0);
+  const [creatorNiche, setCreatorNiche] = useState<string>('');
+  
+  // Mutation for finding collaborations
+  const findCollabsMutation = useMutation({
+    mutationFn: (data: {
+      platforms?: Platform[];
+      minAudienceSize?: number;
+      preferredCollabTypes?: CollaborationType[];
+      audienceOverlap?: number;
+      creatorNiche?: string;
+    }) => generateCreatorCollaborations(data)
   });
-
-  // Mutation for generating collaboration suggestions
-  const generateMutation = useMutation({
-    mutationFn: (params: CollaborationParams) => 
-      apiRequest('/api/collaborations/suggestions', 'POST', params),
-    onSuccess: (data) => {
-      queryClient.setQueryData(['/api/collaborations/suggestions'], data);
-    }
-  });
-
-  const handleGenerateSuggestions = () => {
-    generateMutation.mutate({
-      preferredCollabTypes: selectedCollabTypes.length > 0 ? selectedCollabTypes : undefined,
-      preferredPlatforms: selectedPlatforms.length > 0 ? selectedPlatforms : undefined,
-      count
+  
+  // Handle finding collaborations
+  const handleFindCollaborations = () => {
+    findCollabsMutation.mutate({
+      platforms: selectedPlatforms.length > 0 ? selectedPlatforms : undefined,
+      minAudienceSize: minAudienceSize > 0 ? minAudienceSize : undefined,
+      preferredCollabTypes: preferredCollabTypes.length > 0 ? preferredCollabTypes : undefined,
+      audienceOverlap: audienceOverlap > 0 ? audienceOverlap : undefined,
+      creatorNiche: creatorNiche ? creatorNiche : undefined
     });
   };
-
-  const togglePlatform = (platform: SocialPlatform) => {
+  
+  // Toggle platform selection
+  const togglePlatform = (platform: Platform) => {
     if (selectedPlatforms.includes(platform)) {
       setSelectedPlatforms(selectedPlatforms.filter(p => p !== platform));
     } else {
       setSelectedPlatforms([...selectedPlatforms, platform]);
     }
   };
-
+  
+  // Toggle collaboration type selection
   const toggleCollabType = (type: CollaborationType) => {
-    if (selectedCollabTypes.includes(type)) {
-      setSelectedCollabTypes(selectedCollabTypes.filter(t => t !== type));
+    if (preferredCollabTypes.includes(type)) {
+      setPreferredCollabTypes(preferredCollabTypes.filter(t => t !== type));
     } else {
-      setSelectedCollabTypes([...selectedCollabTypes, type]);
+      setPreferredCollabTypes([...preferredCollabTypes, type]);
     }
   };
-
-  // Format the collaboration type for display
-  const formatCollabType = (type: string): string => {
-    return type.split('_').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-  };
-
-  // Format platform name for display
+  
+  // Format platform name
   const formatPlatformName = (platform: string): string => {
     return platform.charAt(0).toUpperCase() + platform.slice(1);
   };
-
+  
+  // Format collaboration type name for display
+  const formatCollabType = (type: CollaborationType): string => {
+    switch(type) {
+      case 'video': return 'Video Collab';
+      case 'podcast': return 'Podcast Guest';
+      case 'shoutout': return 'Shoutout Exchange';
+      case 'giveaway': return 'Joint Giveaway';
+      case 'live': return 'Live Stream';
+      case 'story_takeover': return 'Story Takeover';
+      case 'joint_post': return 'Joint Post';
+      case 'guest_content': return 'Guest Content';
+      case 'challenge': return 'Challenge';
+      case 'product_collab': return 'Product Collab';
+      default: return type;
+    }
+  };
+  
+  // Format number with K, M suffixes
+  const formatNumber = (num: number): string => {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1) + 'M';
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
+  };
+  
+  // Format percentage
+  const formatPercentage = (value: number): string => {
+    return value.toFixed(1) + '%';
+  };
+  
+  // Get match score text and color
+  const getMatchScoreColor = (score: number): string => {
+    if (score >= 85) return 'text-green-500';
+    if (score >= 70) return 'text-amber-500';
+    return 'text-blue-500';
+  };
+  
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Find Creator Collaborations</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5 text-primary" />
+            Creator Collaboration Finder
+          </CardTitle>
           <CardDescription>
-            Discover potential creator partnerships based on audience overlap and content synergy
+            Find the perfect creator collaborations based on audience match and content synergy
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium mb-2">Preferred Platforms</h3>
-              <div className="flex flex-wrap gap-2">
-                {platformOptions.map(platform => (
-                  <Badge
-                    key={platform}
-                    variant={selectedPlatforms.includes(platform) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => togglePlatform(platform)}
-                  >
-                    {formatPlatformName(platform)}
-                  </Badge>
-                ))}
-              </div>
+        <CardContent className="space-y-6">
+          <div>
+            <h3 className="text-sm font-medium mb-2">Platforms</h3>
+            <div className="flex flex-wrap gap-2">
+              {PLATFORM_OPTIONS.map(platform => (
+                <Badge
+                  key={platform}
+                  variant={selectedPlatforms.includes(platform) ? "default" : "outline"}
+                  className="cursor-pointer"
+                  onClick={() => togglePlatform(platform)}
+                >
+                  {formatPlatformName(platform)}
+                </Badge>
+              ))}
             </div>
-            
-            <Separator />
-            
-            <div>
-              <h3 className="text-sm font-medium mb-2">Collaboration Types</h3>
-              <div className="flex flex-wrap gap-2">
-                {collaborationOptions.map(type => (
-                  <Badge
-                    key={type}
-                    variant={selectedCollabTypes.includes(type) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => toggleCollabType(type)}
-                  >
-                    {formatCollabType(type)}
-                  </Badge>
-                ))}
-              </div>
+          </div>
+          
+          <Separator />
+          
+          <div>
+            <h3 className="text-sm font-medium mb-2">Collaboration Types</h3>
+            <div className="flex flex-wrap gap-2">
+              {COLLABORATION_OPTIONS.map((type: CollaborationType) => (
+                <Badge
+                  key={type}
+                  variant={preferredCollabTypes.includes(type) ? "default" : "outline"}
+                  className="cursor-pointer"
+                  onClick={() => toggleCollabType(type)}
+                >
+                  {formatCollabType(type)}
+                </Badge>
+              ))}
             </div>
-            
-            <Separator />
-            
+          </div>
+          
+          <Separator />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <h3 className="text-sm font-medium mb-2">Number of Suggestions</h3>
+              <h3 className="text-sm font-medium mb-2">Minimum Audience Size</h3>
               <Select 
-                value={count.toString()} 
-                onValueChange={(val) => setCount(parseInt(val))}
+                value={minAudienceSize.toString()} 
+                onValueChange={(val) => setMinAudienceSize(parseInt(val))}
               >
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Number of suggestions" />
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select minimum audience size" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectGroup>
-                    <SelectLabel>Suggestions</SelectLabel>
-                    <SelectItem value="3">3 suggestions</SelectItem>
-                    <SelectItem value="5">5 suggestions</SelectItem>
-                    <SelectItem value="10">10 suggestions</SelectItem>
-                    <SelectItem value="15">15 suggestions</SelectItem>
-                  </SelectGroup>
+                  {AUDIENCE_SIZE_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value.toString()}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+            </div>
+            
+            <div>
+              <h3 className="text-sm font-medium mb-2">Audience Overlap</h3>
+              <Select 
+                value={audienceOverlap.toString()} 
+                onValueChange={(val) => setAudienceOverlap(parseInt(val))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select desired audience overlap" />
+                </SelectTrigger>
+                <SelectContent>
+                  {AUDIENCE_OVERLAP_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value.toString()}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <Separator />
+          
+          <div>
+            <h3 className="text-sm font-medium mb-2">Creator Niche (Optional)</h3>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={creatorNiche}
+                onChange={(e) => setCreatorNiche(e.target.value)}
+                placeholder="e.g. fitness, beauty, tech, finance, travel"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
             </div>
           </div>
         </CardContent>
         <CardFooter>
           <Button 
-            onClick={handleGenerateSuggestions}
-            disabled={generateMutation.isPending}
+            onClick={handleFindCollaborations}
+            disabled={findCollabsMutation.isPending}
             className="w-full sm:w-auto"
           >
-            {generateMutation.isPending ? "Generating..." : "Find Collaborations"}
+            {findCollabsMutation.isPending ? "Finding Collaborations..." : "Find Collaborations"}
           </Button>
         </CardFooter>
       </Card>
-
-      {generateMutation.isPending && (
+      
+      {/* Loading state */}
+      {findCollabsMutation.isPending && (
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col items-center justify-center p-8 text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
               <p className="mt-4 text-sm text-muted-foreground">
-                Analyzing your audience and finding the perfect collaboration matches...
+                Analyzing creator profiles and finding the best matches for your audience...
               </p>
             </div>
           </CardContent>
         </Card>
       )}
-
-      {generateMutation.isError && (
+      
+      {/* Error state */}
+      {findCollabsMutation.isError && (
         <Card className="border-destructive">
           <CardContent className="pt-6">
             <div className="text-center text-destructive p-4">
-              <p className="font-medium">Unable to generate collaboration suggestions</p>
+              <p className="font-medium">Unable to find creator collaborations</p>
               <p className="text-sm mt-1">Please try again or adjust your parameters</p>
             </div>
           </CardContent>
         </Card>
       )}
-
-      {suggestions && suggestions.length > 0 && (
+      
+      {/* Results display */}
+      {findCollabsMutation.isSuccess && findCollabsMutation.data && (
         <div className="space-y-6">
-          <h2 className="text-2xl font-bold">Creator Collaboration Suggestions</h2>
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold">Collaboration Opportunities</h2>
+            <Badge variant="outline" className="text-sm">
+              {findCollabsMutation.data.length} matches found
+            </Badge>
+          </div>
           
-          {suggestions.map((collab, index) => (
-            <Card key={index}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
+          {findCollabsMutation.data.map((collab: CreatorCollaboration, index: number) => (
+            <Card key={index} className="overflow-hidden">
+              <div className="border-l-4 border-primary h-full absolute left-0"></div>
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle>{collab.creatorName}</CardTitle>
-                    <CardDescription>
-                      {collab.niche} Creator on {formatPlatformName(collab.platform)}
+                    <CardTitle className="text-xl">{collab.creatorName}</CardTitle>
+                    <CardDescription className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline">
+                        {formatPlatformName(collab.platform)}
+                      </Badge>
+                      <span className="text-sm">{collab.niche}</span>
                     </CardDescription>
                   </div>
-                  <Badge variant="success" className="ml-2">
-                    {collab.matchScore * 100}% Match
-                  </Badge>
+                  <div className="flex flex-col items-end">
+                    <span className={`text-2xl font-bold ${getMatchScoreColor(collab.matchScore)}`}>
+                      {collab.matchScore}%
+                    </span>
+                    <span className="text-xs text-muted-foreground">Match Score</span>
+                  </div>
                 </div>
               </CardHeader>
               
-              <CardContent>
-                <Tabs defaultValue="overview">
-                  <TabsList className="w-full">
-                    <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
-                    <TabsTrigger value="audience" className="flex-1">Audience</TabsTrigger>
-                    <TabsTrigger value="ideas" className="flex-1">Collaboration Ideas</TabsTrigger>
-                  </TabsList>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                  <div className="flex flex-col space-y-1">
+                    <span className="text-xs text-muted-foreground">Audience Size</span>
+                    <span className="text-xl font-bold">{formatNumber(collab.audienceSize)}</span>
+                  </div>
                   
-                  <TabsContent value="overview" className="space-y-4 pt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">Audience Size</p>
-                        <p className="text-2xl font-bold">
-                          {collab.audienceSize.toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">Engagement Rate</p>
-                        <p className="text-2xl font-bold">
-                          {(collab.engagementRate * 100).toFixed(1)}%
-                        </p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">Content Synergy</p>
-                        <p className="text-2xl font-bold">
-                          {(collab.contentSynergy * 100).toFixed(1)}%
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Recommended Collaboration Types</p>
-                      <div className="flex flex-wrap gap-2">
-                        {collab.recommendedCollabTypes.map(type => (
-                          <Badge key={type} variant="secondary">
-                            {formatCollabType(type)}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Topics</p>
-                      <div className="flex flex-wrap gap-2">
-                        {collab.topics.map((topic, i) => (
-                          <Badge key={i} variant="outline">
-                            {topic}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </TabsContent>
+                  <div className="flex flex-col space-y-1">
+                    <span className="text-xs text-muted-foreground">Engagement Rate</span>
+                    <span className="text-xl font-bold">{formatPercentage(collab.engagementRate)}</span>
+                  </div>
                   
-                  <TabsContent value="audience" className="space-y-4 pt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Audience Overlap</p>
-                        <p className="text-2xl font-bold">
-                          {(collab.audienceOverlap * 100).toFixed(1)}%
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Percentage of shared audience interests and demographics
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Potential Reach</p>
-                        <p className="text-2xl font-bold">
-                          {collab.potentialReach.toLocaleString()}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Estimated new audience members you could reach
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Benefit Prediction</p>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-                        <div className="p-3 bg-muted rounded-md">
-                          <p className="text-sm font-medium">Follower Gain</p>
-                          <p className="text-sm">{collab.benefitPrediction.followerGain}</p>
-                        </div>
-                        <div className="p-3 bg-muted rounded-md">
-                          <p className="text-sm font-medium">Engagement Boost</p>
-                          <p className="text-sm">{collab.benefitPrediction.engagementBoost}</p>
-                        </div>
-                        <div className="p-3 bg-muted rounded-md">
-                          <p className="text-sm font-medium">Monetization</p>
-                          <p className="text-sm">{collab.benefitPrediction.monetizationPotential}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
+                  <div className="flex flex-col space-y-1">
+                    <span className="text-xs text-muted-foreground">Audience Overlap</span>
+                    <span className="text-xl font-bold">{formatPercentage(collab.audienceOverlap)}</span>
+                  </div>
                   
-                  <TabsContent value="ideas" className="space-y-4 pt-4">
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Collaboration Ideas</p>
-                      <ul className="space-y-2 mt-2">
-                        {collab.collaborationIdeas.map((idea, i) => (
-                          <li key={i} className="pl-4 border-l-2 border-primary text-sm">
-                            {idea}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    
-                    {collab.contactMethod && (
-                      <div className="mt-4 p-4 bg-muted rounded-md">
-                        <p className="text-sm font-medium">Contact Information</p>
-                        <p className="text-sm mt-1">{collab.contactMethod}</p>
-                        {collab.profileUrl && (
-                          <Button variant="link" className="p-0 h-auto mt-1 text-sm" onClick={() => window.open(collab.profileUrl, '_blank')}>
-                            View Profile
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </TabsContent>
-                </Tabs>
+                  <div className="flex flex-col space-y-1">
+                    <span className="text-xs text-muted-foreground">Content Synergy</span>
+                    <span className="text-xl font-bold">{formatPercentage(collab.contentSynergy)}</span>
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-primary" />
+                    Recommended Collaboration Types
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {collab.recommendedCollabTypes.map((type: CollaborationType) => (
+                      <Badge key={type} variant="secondary">
+                        {formatCollabType(type)}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4 text-primary" />
+                    Collaboration Ideas
+                  </h3>
+                  <ul className="space-y-2">
+                    {collab.collaborationIdeas.map((idea: string, i: number) => (
+                      <li key={i} className="text-sm flex gap-2 items-start">
+                        <div className="bg-primary h-1.5 w-1.5 rounded-full mt-1.5"></div>
+                        {idea}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-muted p-4 rounded-md">
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium flex items-center gap-1">
+                      <UserCheck className="h-3 w-3 text-blue-500" />
+                      Follower Growth
+                    </span>
+                    <p className="text-sm">{collab.benefitPrediction.followerGain}</p>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium flex items-center gap-1">
+                      <BarChart3 className="h-3 w-3 text-green-500" />
+                      Engagement Boost
+                    </span>
+                    <p className="text-sm">{collab.benefitPrediction.engagementBoost}</p>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium flex items-center gap-1">
+                      <Zap className="h-3 w-3 text-amber-500" />
+                      Monetization Potential
+                    </span>
+                    <p className="text-sm">{collab.benefitPrediction.monetizationPotential}</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium">Common Topics</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {collab.topics.map((topic: string, i: number) => (
+                      <Badge key={i} variant="outline" className="text-xs">
+                        {topic}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </CardContent>
               
-              <CardFooter className="flex flex-wrap gap-2">
-                <Button variant="outline">Message</Button>
-                <Button>Initiate Collaboration</Button>
+              <CardFooter className="flex flex-wrap gap-2 border-t pt-4">
+                {collab.profileUrl && (
+                  <Button variant="outline" size="sm" className="gap-1">
+                    <LinkIcon className="h-3 w-3" />
+                    View Profile
+                  </Button>
+                )}
+                
+                {collab.contactMethod && (
+                  <Button variant="outline" size="sm" className="gap-1">
+                    <Mail className="h-3 w-3" />
+                    Contact Creator
+                  </Button>
+                )}
+                
+                <Button className="ml-auto gap-1">
+                  Initiate Collaboration
+                  <ArrowRight className="h-3 w-3" />
+                </Button>
               </CardFooter>
             </Card>
           ))}
@@ -382,5 +492,3 @@ const CreatorCollaborationFinder: React.FC = () => {
     </div>
   );
 };
-
-export default CreatorCollaborationFinder;

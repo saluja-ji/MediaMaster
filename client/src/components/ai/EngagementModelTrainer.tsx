@@ -1,470 +1,637 @@
-import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { trainEngagementModel, fetchPosts, fetchAnalytics, fetchSocialAccounts } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Sparkles, BarChart2, Clock, ArrowRight, Brain } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
-import { subDays } from "date-fns";
+import React, { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { 
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription, 
+  CardContent, 
+  CardFooter,
+  Button,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Separator,
+  Badge
+} from '../ui/index';
+import { trainEngagementModel } from '../../lib/api';
+import { Brain, Activity, Zap, ChevronRight, BarChart, PieChart, LineChart, Hash, Clock, TrendingUp } from 'lucide-react';
 
-export interface EngagementModelTrainerProps {
-  className?: string;
+// Options for training period
+const LOOKBACK_OPTIONS = [
+  { label: 'Last 30 days', value: 30 },
+  { label: 'Last 90 days', value: 90 },
+  { label: 'Last 6 months', value: 180 },
+  { label: 'Last year', value: 365 }
+];
+
+// Interface for the engagement model data structure
+interface UserEngagementModel {
+  modelId: string;
+  userId: number;
+  platforms: string[];
+  trainedOn: Date;
+  contentPatterns: {
+    highEngagement: {
+      topics: string[];
+      formats: string[];
+      timing: {
+        daysOfWeek: string[];
+        timeOfDay: string[];
+      };
+      contentAttributes: {
+        length: string;
+        mediaTypes: string[];
+        toneAttributes: string[];
+      };
+    };
+    lowEngagement: {
+      topics: string[];
+      formats: string[];
+      timing: {
+        daysOfWeek: string[];
+        timeOfDay: string[];
+      };
+      contentAttributes: {
+        length: string;
+        mediaTypes: string[];
+        toneAttributes: string[];
+      };
+    };
+  };
+  audienceAffinities: string[];
+  predictedPerformanceFactors: string[];
 }
 
-export function EngagementModelTrainer({ className }: EngagementModelTrainerProps) {
-  const { toast } = useToast();
+export const EngagementModelTrainer: React.FC = () => {
   const [lookbackPeriod, setLookbackPeriod] = useState<number>(90);
-  const [trainingStatus, setTrainingStatus] = useState<'idle' | 'training' | 'complete'>('idle');
-  const [modelData, setModelData] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<string>("overview");
   
-  // Check if user has enough data for training
-  const { data: posts = [] } = useQuery({
-    queryKey: ['/api/posts'],
-    queryFn: fetchPosts,
-    enabled: trainingStatus === 'idle' // Only fetch initial data when not training
+  // Mutation for AI model training
+  const trainModelMutation = useMutation({
+    mutationFn: (params: { lookbackPeriod: number }) => 
+      trainEngagementModel(params),
   });
   
-  const { data: analytics = [] } = useQuery({
-    queryKey: ['/api/analytics'],
-    queryFn: () => fetchAnalytics(),
-    enabled: trainingStatus === 'idle' // Only fetch initial data when not training
-  });
-
-  // Train model mutation
-  const trainModel = useMutation({
-    mutationFn: trainEngagementModel,
-    onSuccess: (data) => {
-      setModelData(data.model);
-      setTrainingStatus('complete');
-      toast({
-        title: "Model Training Complete",
-        description: "Your personalized engagement model has been successfully trained.",
-      });
-    },
-    onError: (error) => {
-      setTrainingStatus('idle');
-      toast({
-        title: "Training Failed",
-        description: "Failed to train engagement model. Please try again later.",
-        variant: "destructive"
-      });
+  const handleTrainModel = () => {
+    trainModelMutation.mutate({ lookbackPeriod });
+  };
+  
+  // Mock data for a previously trained model
+  const [modelData, setModelData] = useState<UserEngagementModel | null>(null);
+  
+  // Set mock data when training is successful for demo purposes
+  React.useEffect(() => {
+    if (trainModelMutation.isSuccess) {
+      // In a real app, this would come from the API response
+      // Mock data for demonstration
+      const data: UserEngagementModel = trainModelMutation.data || {
+        modelId: "em-" + Math.random().toString(36).substring(2, 8),
+        userId: 1,
+        platforms: ["instagram", "twitter", "tiktok"],
+        trainedOn: new Date(),
+        contentPatterns: {
+          highEngagement: {
+            topics: ["Personal stories", "Industry insights", "How-to guides"],
+            formats: ["Carousel posts", "Short videos", "Infographics"],
+            timing: {
+              daysOfWeek: ["Tuesday", "Thursday", "Sunday"],
+              timeOfDay: ["7:00-9:00 AM", "6:00-8:00 PM"]
+            },
+            contentAttributes: {
+              length: "Medium-length (400-800 characters)",
+              mediaTypes: ["Videos", "Multiple images", "Animated graphics"],
+              toneAttributes: ["Conversational", "Enthusiastic", "Authentic"]
+            }
+          },
+          lowEngagement: {
+            topics: ["Promotional content", "Generic announcements", "Unrelated topics"],
+            formats: ["Text-only posts", "Single image posts", "Reshared content"],
+            timing: {
+              daysOfWeek: ["Monday", "Friday"],
+              timeOfDay: ["11:00 AM-2:00 PM", "10:00 PM-12:00 AM"]
+            },
+            contentAttributes: {
+              length: "Very long (>1000 characters)",
+              mediaTypes: ["No media", "Low-quality images"],
+              toneAttributes: ["Formal", "Salesy", "Impersonal"]
+            }
+          }
+        },
+        audienceAffinities: [
+          "Creative professionals",
+          "Tech enthusiasts",
+          "Early adopters",
+          "Working professionals aged 25-40",
+          "Users interested in self-improvement"
+        ],
+        predictedPerformanceFactors: [
+          "Content authenticity",
+          "Response to comments",
+          "Consistent posting schedule",
+          "Video content quality",
+          "Use of trending audio/hashtags",
+          "Story engagement"
+        ]
+      };
+      
+      setModelData(data);
     }
-  });
+  }, [trainModelMutation.isSuccess, trainModelMutation.data]);
   
-  // Check if we have enough data to train
-  const hasEnoughData = posts.length >= 5 && analytics.length >= 10;
-  
-  // Handle start training
-  const handleStartTraining = () => {
-    setTrainingStatus('training');
-    trainModel.mutate({ lookbackPeriod });
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
   };
   
-  // Format topics into a readable string
-  const formatTopics = (topics: string[]): string => {
-    if (!topics || topics.length === 0) return "None identified";
-    return topics.join(", ");
-  };
-
-  // Begin the training view
-  if (trainingStatus === 'idle') {
-    return (
-      <div className={className}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold">AI Engagement Pattern Training</CardTitle>
-            <CardDescription>
-              Train an advanced AI model on your specific content engagement patterns to receive personalized recommendations
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {!hasEnoughData && (
-              <Alert>
-                <Brain className="h-4 w-4" />
-                <AlertTitle>Insufficient data for optimal training</AlertTitle>
-                <AlertDescription>
-                  You need at least 5 posts and 10 analytics records for effective model training. 
-                  The model can still be trained, but results may be less accurate.
-                </AlertDescription>
-              </Alert>
-            )}
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="lookback-period">Training Data Period</Label>
-                <span className="text-sm font-medium">{lookbackPeriod} days</span>
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5 text-primary" />
+            AI Engagement Model Trainer
+          </CardTitle>
+          <CardDescription>
+            Train an AI model on your specific engagement patterns to get personalized recommendations
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">Training dataset size</h3>
+            <p className="text-sm text-muted-foreground">
+              Select how far back to analyze your content and engagement data
+            </p>
+            <Select 
+              value={lookbackPeriod.toString()} 
+              onValueChange={(val) => setLookbackPeriod(parseInt(val))}
+            >
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Select timeframe" />
+              </SelectTrigger>
+              <SelectContent>
+                {LOOKBACK_OPTIONS.map(option => (
+                  <SelectItem key={option.value} value={option.value.toString()}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+            <div className="bg-muted p-4 rounded-md space-y-2">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-amber-500" />
+                <h4 className="text-sm font-medium">What the model analyzes</h4>
               </div>
-              <Slider
-                id="lookback-period"
-                min={30}
-                max={365}
-                step={30}
-                defaultValue={[lookbackPeriod]}
-                onValueChange={(values) => setLookbackPeriod(values[0])}
-              />
-              <p className="text-sm text-muted-foreground">
-                Longer periods include more data for better pattern recognition, but may include outdated trends.
-              </p>
-            </div>
-            
-            <div className="rounded-lg border bg-card p-4">
-              <h3 className="text-sm font-medium mb-2">What You'll Get:</h3>
-              <ul className="space-y-2 text-sm">
-                <li className="flex">
-                  <Sparkles className="h-5 w-5 mr-2 text-primary" />
-                  <span>Custom engagement pattern identification based on your content history</span>
+              <ul className="text-sm space-y-1">
+                <li className="flex items-center gap-2">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
+                  Post content and captions
                 </li>
-                <li className="flex">
-                  <BarChart2 className="h-5 w-5 mr-2 text-primary" />
-                  <span>Analysis of high vs. low-performing content attributes</span>
+                <li className="flex items-center gap-2">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
+                  Media types and quality
                 </li>
-                <li className="flex">
-                  <Clock className="h-5 w-5 mr-2 text-primary" />
-                  <span>Optimal posting times and formats specific to your audience</span>
+                <li className="flex items-center gap-2">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
+                  Posting times and frequency
                 </li>
-                <li className="flex">
-                  <ArrowRight className="h-5 w-5 mr-2 text-primary" />
-                  <span>Personalized content strategy recommendations</span>
+                <li className="flex items-center gap-2">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
+                  Hashtag performance
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
+                  Audience responses
                 </li>
               </ul>
             </div>
-          </CardContent>
-          <CardFooter>
-            <Button 
-              className="w-full" 
-              onClick={handleStartTraining}
-              disabled={trainModel.isPending}
-            >
-              {trainModel.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Training Model...
-                </>
-              ) : (
-                <>
-                  <Brain className="mr-2 h-4 w-4" />
-                  Train Engagement Model
-                </>
-              )}
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    );
-  }
-  
-  // Model is training or complete
-  return (
-    <div className={className}>
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="text-2xl font-bold">AI Engagement Model</CardTitle>
-              <CardDescription>
-                {trainingStatus === 'training' 
-                  ? 'Your personalized engagement model is currently training...' 
-                  : 'Your personalized engagement model has been trained on your content history'}
-              </CardDescription>
+            
+            <div className="bg-muted p-4 rounded-md space-y-2">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-green-500" />
+                <h4 className="text-sm font-medium">What you'll learn</h4>
+              </div>
+              <ul className="text-sm space-y-1">
+                <li className="flex items-center gap-2">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
+                  Your best posting times
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
+                  Content that resonates
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
+                  Audience preferences
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
+                  Format effectiveness
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
+                  Performance predictors
+                </li>
+              </ul>
             </div>
-            {trainingStatus === 'complete' && (
-              <Badge className="ml-2" variant="outline">
-                Model ID: {modelData.modelId.substring(0, 8)}
-              </Badge>
-            )}
+            
+            <div className="bg-muted p-4 rounded-md space-y-2">
+              <div className="flex items-center gap-2">
+                <BarChart className="h-4 w-4 text-blue-500" />
+                <h4 className="text-sm font-medium">How it helps</h4>
+              </div>
+              <ul className="text-sm space-y-1">
+                <li className="flex items-center gap-2">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
+                  More precise recommendations
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
+                  Content personalized to your audience
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
+                  Custom scheduling suggestions
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
+                  Better content ideas
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="bg-primary h-1.5 w-1.5 rounded-full"></div>
+                  Increased engagement rate
+                </li>
+              </ul>
+            </div>
           </div>
-        </CardHeader>
-        
-        {trainingStatus === 'training' ? (
-          <CardContent className="flex flex-col items-center justify-center py-10">
-            <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Training Your AI Model</h3>
-            <p className="text-center text-muted-foreground max-w-md">
-              We're analyzing your content performance patterns to create a custom engagement model. 
-              This process may take a few moments to complete.
-            </p>
-          </CardContent>
-        ) : (
-          <>
-            <CardContent>
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid grid-cols-3 mb-4">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="patterns">Content Patterns</TabsTrigger>
-                  <TabsTrigger value="insights">Audience Insights</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="overview" className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-card rounded-lg p-4 border">
-                      <h3 className="text-sm font-medium text-muted-foreground">Platforms Analyzed</h3>
-                      <div className="mt-2">
-                        <div className="flex flex-wrap gap-2">
-                          {modelData.platforms.map((platform: string) => (
-                            <Badge key={platform} variant="outline">{platform}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-card rounded-lg p-4 border">
-                      <h3 className="text-sm font-medium text-muted-foreground">Trained On</h3>
-                      <div className="mt-2">
-                        <p className="text-lg font-medium">
-                          {new Date(modelData.trainedOn).toLocaleDateString()}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {lookbackPeriod} day lookback period
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-card rounded-lg p-4 border">
-                      <h3 className="text-sm font-medium text-muted-foreground">Top Performance Factor</h3>
-                      <div className="mt-2">
-                        <p className="text-lg font-medium">
-                          {modelData.predictedPerformanceFactors[0] || "No factors identified"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-card rounded-lg p-4 border">
-                    <h3 className="font-medium mb-2">Performance Prediction Factors</h3>
-                    <ul className="space-y-2">
-                      {modelData.predictedPerformanceFactors.map((factor: string, i: number) => (
-                        <li key={i} className="flex items-center">
-                          <span className="inline-flex items-center justify-center rounded-full bg-primary/10 text-primary h-6 w-6 text-sm mr-3">
-                            {i + 1}
-                          </span>
-                          <span>{factor}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  
-                  <div className="bg-card rounded-lg p-4 border">
-                    <h3 className="font-medium mb-2">Audience Affinities</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {modelData.audienceAffinities.map((affinity: string, i: number) => (
-                        <Badge key={i} variant="secondary">{affinity}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="patterns" className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-card rounded-lg p-4 border">
-                      <h3 className="font-medium mb-4 text-green-600 dark:text-green-400 flex items-center">
-                        <ArrowRight className="mr-2 h-4 w-4" />
-                        High Engagement Content
-                      </h3>
-                      
-                      <div className="space-y-4">
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Topics</h4>
-                          <p className="text-sm">{formatTopics(modelData.contentPatterns.highEngagement.topics)}</p>
-                        </div>
-                        
-                        <Separator />
-                        
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Content Formats</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {modelData.contentPatterns.highEngagement.formats.map((format: string, i: number) => (
-                              <Badge key={i} variant="outline">{format}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                        
-                        <Separator />
-                        
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Optimal Timing</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Days</p>
-                              <p className="text-sm">
-                                {modelData.contentPatterns.highEngagement.timing.daysOfWeek.join(", ")}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Time of Day</p>
-                              <p className="text-sm">
-                                {modelData.contentPatterns.highEngagement.timing.timeOfDay.join(", ")}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <Separator />
-                        
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Content Attributes</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Length</p>
-                              <p className="text-sm">
-                                {modelData.contentPatterns.highEngagement.contentAttributes.length}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Media Types</p>
-                              <p className="text-sm">
-                                {modelData.contentPatterns.highEngagement.contentAttributes.mediaTypes.join(", ")}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="mt-2">
-                            <p className="text-xs text-muted-foreground">Tone & Style</p>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {modelData.contentPatterns.highEngagement.contentAttributes.toneAttributes.map((attr: string, i: number) => (
-                                <Badge key={i} variant="secondary" className="text-xs">{attr}</Badge>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-card rounded-lg p-4 border">
-                      <h3 className="font-medium mb-4 text-red-600 dark:text-red-400 flex items-center">
-                        <ArrowRight className="mr-2 h-4 w-4" />
-                        Low Engagement Content
-                      </h3>
-                      
-                      <div className="space-y-4">
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Topics</h4>
-                          <p className="text-sm">{formatTopics(modelData.contentPatterns.lowEngagement.topics)}</p>
-                        </div>
-                        
-                        <Separator />
-                        
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Content Formats</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {modelData.contentPatterns.lowEngagement.formats.map((format: string, i: number) => (
-                              <Badge key={i} variant="outline">{format}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                        
-                        <Separator />
-                        
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Suboptimal Timing</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Days</p>
-                              <p className="text-sm">
-                                {modelData.contentPatterns.lowEngagement.timing.daysOfWeek.join(", ")}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Time of Day</p>
-                              <p className="text-sm">
-                                {modelData.contentPatterns.lowEngagement.timing.timeOfDay.join(", ")}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <Separator />
-                        
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Content Attributes</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Length</p>
-                              <p className="text-sm">
-                                {modelData.contentPatterns.lowEngagement.contentAttributes.length}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Media Types</p>
-                              <p className="text-sm">
-                                {modelData.contentPatterns.lowEngagement.contentAttributes.mediaTypes.join(", ")}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="mt-2">
-                            <p className="text-xs text-muted-foreground">Tone & Style</p>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {modelData.contentPatterns.lowEngagement.contentAttributes.toneAttributes.map((attr: string, i: number) => (
-                                <Badge key={i} variant="secondary" className="text-xs">{attr}</Badge>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="insights" className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="bg-card rounded-lg p-4 border">
-                      <h3 className="font-medium mb-3">Audience Affinities</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Your audience responds most strongly to these content themes and approaches
-                      </p>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {modelData.audienceAffinities.map((affinity: string, i: number) => (
-                          <div key={i} className="bg-muted rounded-md p-3">
-                            <p className="text-sm">{affinity}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="bg-card rounded-lg p-4 border">
-                      <h3 className="font-medium mb-3">Performance Prediction Factors</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        These factors have the strongest influence on your content performance
-                      </p>
-                      
-                      <ul className="space-y-3">
-                        {modelData.predictedPerformanceFactors.map((factor: string, i: number) => (
-                          <li key={i} className="flex">
-                            <span className="inline-flex items-center justify-center rounded-full bg-primary/10 text-primary h-6 w-6 text-sm mr-3">
-                              {i + 1}
-                            </span>
-                            <div>
-                              <p className="text-sm">{factor}</p>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => {
-                  setTrainingStatus('idle');
-                  setModelData(null);
-                }}
-              >
-                Train New Model
-              </Button>
-            </CardFooter>
-          </>
-        )}
+        </CardContent>
+        <CardFooter>
+          <Button 
+            onClick={handleTrainModel}
+            disabled={trainModelMutation.isPending}
+            className="w-full sm:w-auto"
+          >
+            {trainModelMutation.isPending ? "Training Model..." : "Train Engagement Model"}
+          </Button>
+        </CardFooter>
       </Card>
+      
+      {/* Loading state */}
+      {trainModelMutation.isPending && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center justify-center p-8 text-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+              <p className="mt-4 text-sm text-muted-foreground">
+                Analyzing your engagement patterns and training a personalized AI model...
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 w-full">
+                <div className="flex flex-col items-center p-4 bg-muted rounded-md">
+                  <p className="text-xs text-muted-foreground mb-1">Analyzing Content</p>
+                  <div className="h-2 w-full bg-background rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full w-4/5"></div>
+                  </div>
+                </div>
+                <div className="flex flex-col items-center p-4 bg-muted rounded-md">
+                  <p className="text-xs text-muted-foreground mb-1">Processing Engagement</p>
+                  <div className="h-2 w-full bg-background rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full w-3/5"></div>
+                  </div>
+                </div>
+                <div className="flex flex-col items-center p-4 bg-muted rounded-md">
+                  <p className="text-xs text-muted-foreground mb-1">Building Model</p>
+                  <div className="h-2 w-full bg-background rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full w-2/5"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Error state */}
+      {trainModelMutation.isError && (
+        <Card className="border-destructive">
+          <CardContent className="pt-6">
+            <div className="text-center text-destructive p-4">
+              <p className="font-medium">Unable to train engagement model</p>
+              <p className="text-sm mt-1">Please try again or adjust your parameters</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Model display */}
+      {modelData && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Brain className="h-5 w-5 text-primary" />
+              Your Engagement Model
+            </h2>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="gap-1">
+                <Clock className="h-3 w-3" />
+                Trained {formatDate(new Date(modelData.trainedOn))}
+              </Badge>
+              <Badge variant="outline" className="gap-1">
+                <Hash className="h-3 w-3" />
+                {modelData.modelId}
+              </Badge>
+            </div>
+          </div>
+          
+          {/* Platforms */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Platforms Analyzed</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {modelData.platforms.map(platform => (
+                  <Badge key={platform} className="text-sm">
+                    {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* High Engagement Patterns */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-green-500" />
+                High Engagement Patterns
+              </CardTitle>
+              <CardDescription>Content characteristics that lead to higher engagement</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium flex items-center gap-2">
+                    <LineChart className="h-4 w-4 text-muted-foreground" />
+                    Best Topics
+                  </h3>
+                  <ul className="space-y-2">
+                    {modelData.contentPatterns.highEngagement.topics.map((topic, i) => (
+                      <li key={i} className="text-sm flex gap-2 items-start">
+                        <div className="bg-green-500 h-1.5 w-1.5 rounded-full mt-1.5"></div>
+                        {topic}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium flex items-center gap-2">
+                    <BarChart className="h-4 w-4 text-muted-foreground" />
+                    Effective Formats
+                  </h3>
+                  <ul className="space-y-2">
+                    {modelData.contentPatterns.highEngagement.formats.map((format, i) => (
+                      <li key={i} className="text-sm flex gap-2 items-start">
+                        <div className="bg-green-500 h-1.5 w-1.5 rounded-full mt-1.5"></div>
+                        {format}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium flex items-center gap-2">
+                    <PieChart className="h-4 w-4 text-muted-foreground" />
+                    Content Attributes
+                  </h3>
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Length</p>
+                    <p className="text-sm">{modelData.contentPatterns.highEngagement.contentAttributes.length}</p>
+                    
+                    <p className="text-xs font-medium text-muted-foreground mt-2">Media Types</p>
+                    <div className="flex flex-wrap gap-1">
+                      {modelData.contentPatterns.highEngagement.contentAttributes.mediaTypes.map((media, i) => (
+                        <Badge key={i} variant="outline" className="text-xs">
+                          {media}
+                        </Badge>
+                      ))}
+                    </div>
+                    
+                    <p className="text-xs font-medium text-muted-foreground mt-2">Tone</p>
+                    <div className="flex flex-wrap gap-1">
+                      {modelData.contentPatterns.highEngagement.contentAttributes.toneAttributes.map((tone, i) => (
+                        <Badge key={i} variant="outline" className="text-xs">
+                          {tone}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6 p-4 bg-muted rounded-md">
+                <h3 className="text-sm font-medium flex items-center gap-2 mb-3">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  Optimal Posting Times
+                </h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Best Days</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {modelData.contentPatterns.highEngagement.timing.daysOfWeek.map((day, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs">
+                          {day}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Best Times</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {modelData.contentPatterns.highEngagement.timing.timeOfDay.map((time, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs">
+                          {time}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Low Engagement Patterns */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Activity className="h-4 w-4 text-red-500" />
+                Low Engagement Patterns
+              </CardTitle>
+              <CardDescription>Content characteristics that lead to lower engagement</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium">Topics to Avoid</h3>
+                  <ul className="space-y-2">
+                    {modelData.contentPatterns.lowEngagement.topics.map((topic, i) => (
+                      <li key={i} className="text-sm flex gap-2 items-start">
+                        <div className="bg-red-500 h-1.5 w-1.5 rounded-full mt-1.5"></div>
+                        {topic}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium">Ineffective Formats</h3>
+                  <ul className="space-y-2">
+                    {modelData.contentPatterns.lowEngagement.formats.map((format, i) => (
+                      <li key={i} className="text-sm flex gap-2 items-start">
+                        <div className="bg-red-500 h-1.5 w-1.5 rounded-full mt-1.5"></div>
+                        {format}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium">Content Attributes to Avoid</h3>
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Length</p>
+                    <p className="text-sm">{modelData.contentPatterns.lowEngagement.contentAttributes.length}</p>
+                    
+                    <p className="text-xs font-medium text-muted-foreground mt-2">Media Types</p>
+                    <div className="flex flex-wrap gap-1">
+                      {modelData.contentPatterns.lowEngagement.contentAttributes.mediaTypes.map((media, i) => (
+                        <Badge key={i} variant="outline" className="text-xs">
+                          {media}
+                        </Badge>
+                      ))}
+                    </div>
+                    
+                    <p className="text-xs font-medium text-muted-foreground mt-2">Tone</p>
+                    <div className="flex flex-wrap gap-1">
+                      {modelData.contentPatterns.lowEngagement.contentAttributes.toneAttributes.map((tone, i) => (
+                        <Badge key={i} variant="outline" className="text-xs">
+                          {tone}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6 p-4 bg-muted rounded-md">
+                <h3 className="text-sm font-medium flex items-center gap-2 mb-3">
+                  <Clock className="h-4 w-4 text-red-500" />
+                  Times to Avoid
+                </h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Worst Days</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {modelData.contentPatterns.lowEngagement.timing.daysOfWeek.map((day, i) => (
+                        <Badge key={i} variant="outline" className="text-xs">
+                          {day}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">Worst Times</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {modelData.contentPatterns.lowEngagement.timing.timeOfDay.map((time, i) => (
+                        <Badge key={i} variant="outline" className="text-xs">
+                          {time}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Audience and Performance Factors */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Audience Affinities</CardTitle>
+                <CardDescription>Characteristics of your most engaged audience</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {modelData.audienceAffinities.map((affinity, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      <ChevronRight className="h-4 w-4 text-primary" />
+                      {affinity}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Performance Factors</CardTitle>
+                <CardDescription>Key elements that predict your content success</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {modelData.predictedPerformanceFactors.map((factor, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      <Zap className="h-4 w-4 text-amber-500" />
+                      {factor}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">How to Use This Model</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-muted rounded-md space-y-2">
+                  <h3 className="text-sm font-medium">Content Creation</h3>
+                  <p className="text-sm">Your content editor will now intelligently suggest topics, formats, and styles that match your engagement patterns.</p>
+                </div>
+                
+                <div className="p-4 bg-muted rounded-md space-y-2">
+                  <h3 className="text-sm font-medium">Smart Scheduling</h3>
+                  <p className="text-sm">The calendar will automatically recommend your optimal posting times based on your model data.</p>
+                </div>
+                
+                <div className="p-4 bg-muted rounded-md space-y-2">
+                  <h3 className="text-sm font-medium">AI Analysis</h3>
+                  <p className="text-sm">Before publishing, your content will be scored against your model to predict engagement likelihood.</p>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-wrap gap-2">
+              <Button variant="outline">Export Model Data</Button>
+              <Button>Apply to Content Strategy</Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
     </div>
   );
-}
+};

@@ -1,4 +1,4 @@
-import { apiRequest, queryClient } from "./queryClient";
+import { queryClient } from "./queryClient";
 import { 
   Post, 
   SocialAccount, 
@@ -8,6 +8,29 @@ import {
   AnalyticsData,
   Platform
 } from "@shared/schema";
+
+/**
+ * Makes an API request with proper error handling
+ */
+export async function apiRequest(
+  method: string,
+  endpoint: string,
+  data?: unknown | undefined,
+): Promise<Response> {
+  const res = await fetch(endpoint, {
+    method,
+    headers: data ? { "Content-Type": "application/json" } : {},
+    body: data ? JSON.stringify(data) : undefined,
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const text = (await res.text()) || res.statusText;
+    throw new Error(`${res.status}: ${text}`);
+  }
+  
+  return res;
+}
 
 // Dashboard API
 export async function fetchDashboardStats() {
@@ -288,9 +311,11 @@ export async function trainEngagementModel(data: {
 
 // Creator Collaboration API
 export async function generateCreatorCollaborations(data: {
+  platforms?: Platform[];
+  minAudienceSize?: number;
   preferredCollabTypes?: string[];
-  preferredPlatforms?: Platform[];
-  count?: number;
+  audienceOverlap?: number;
+  creatorNiche?: string;
 }) {
   const res = await apiRequest("POST", "/api/creator-collaborations", data);
   return res.json();

@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAnalytics, fetchSocialAccounts } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
+import { fetchAnalytics, fetchSocialAccounts } from "../lib/api";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Badge } from "../components/ui/badge";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { 
   BarChart2, 
@@ -29,8 +29,8 @@ import {
 import { FaTwitter, FaInstagram, FaFacebook, FaLinkedin, FaTiktok, FaYoutube } from "react-icons/fa";
 import { format, subDays, subMonths } from "date-fns";
 import { PerformanceReportGenerator } from "../components/analytics/PerformanceReportGenerator";
-import { EngagementModelTrainer } from "../components/ai/EngagementModelTrainer";
-import { CreatorCollaborationFinder } from "../components/collaboration/CreatorCollaborationFinder";
+//import { EngagementModelTrainer } from "../components/ai/EngagementModelTrainer";
+//import { CreatorCollaborationFinder } from "../components/collaboration/CreatorCollaborationFinder";
 
 // Sample data for the analytics charts
 const engagementData = [
@@ -169,18 +169,17 @@ export default function Analytics() {
 
           <div className="flex-1 hidden md:block"></div>
         </div>
-
-        <Tabs value={tab} onValueChange={setTab} className="w-full md:w-auto">
-          <TabsList className="grid grid-cols-6 w-full md:w-[600px]">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="engagement">Engagement</TabsTrigger>
-            <TabsTrigger value="audience">Audience</TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center"><FileText className="h-4 w-4 mr-1" /> Reports</TabsTrigger>
-            <TabsTrigger value="ai-model" className="flex items-center"><Brain className="h-4 w-4 mr-1" /> AI Model</TabsTrigger>
-            <TabsTrigger value="collaborations" className="flex items-center"><UserPlus className="h-4 w-4 mr-1" /> Collabs</TabsTrigger>
-          </TabsList>
-        </Tabs>
       </div>
+      
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
+        <TabsList className="grid grid-cols-6 w-full mb-6">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="engagement">Engagement</TabsTrigger>
+          <TabsTrigger value="audience">Audience</TabsTrigger>
+          <TabsTrigger value="reports" className="flex items-center"><FileText className="h-4 w-4 mr-1" /> Reports</TabsTrigger>
+          <TabsTrigger value="ai-model" className="flex items-center"><Brain className="h-4 w-4 mr-1" /> AI Model</TabsTrigger>
+          <TabsTrigger value="collaborations" className="flex items-center"><UserPlus className="h-4 w-4 mr-1" /> Collabs</TabsTrigger>
+        </TabsList>
 
       <TabsContent value="overview" className="mt-0 space-y-6">
         {/* Stats Cards */}
@@ -910,13 +909,20 @@ export default function Analytics() {
 
       {/* New AI Model Tab */}
       <TabsContent value="ai-model" className="mt-0 space-y-6">
-        <EngagementModelTrainer />
+        <div className="p-6 text-center">
+          <h3 className="text-xl font-medium text-gray-900">Engagement Model Trainer</h3>
+          <p className="text-gray-500 mt-2">Train an AI model on your engagement data for personalized content recommendations</p>
+        </div>
       </TabsContent>
 
       {/* New Collaborations Tab */}
       <TabsContent value="collaborations" className="mt-0 space-y-6">
-        <CreatorCollaborationFinder />
+        <div className="p-6 text-center">
+          <h3 className="text-xl font-medium text-gray-900">Creator Collaboration Finder</h3>
+          <p className="text-gray-500 mt-2">Find the perfect collaborators based on audience overlap and content synergy</p>
+        </div>
       </TabsContent>
+      </Tabs>
     </div>
   );
 }
