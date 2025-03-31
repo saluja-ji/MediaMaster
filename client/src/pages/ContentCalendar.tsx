@@ -184,18 +184,18 @@ export default function ContentCalendar() {
                 </SelectContent>
               </Select>
               
-              <Tabs value={view} onValueChange={handleViewChange} className="w-[200px]">
+              <div className="w-[200px]">
                 <TabsList className="grid grid-cols-2">
                   <TabsTrigger value="month">Month</TabsTrigger>
                   <TabsTrigger value="list">List</TabsTrigger>
                 </TabsList>
-              </Tabs>
+              </div>
             </div>
           </div>
         </CardHeader>
         
         <CardContent>
-          <Tabs value={view} className="w-full">
+          <Tabs value={view} onValueChange={handleViewChange} className="w-full">
             <TabsContent value="month" className="mt-0">
               <div className="grid grid-cols-7 gap-0.5 text-center">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
