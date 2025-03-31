@@ -195,126 +195,128 @@ export default function ContentCalendar() {
         </CardHeader>
         
         <CardContent>
-          <TabsContent value="month" className="mt-0">
-            <div className="grid grid-cols-7 gap-0.5 text-center">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
-                <div key={day} className="bg-gray-50 p-2 font-medium text-sm text-gray-700">
-                  {day}
-                </div>
-              ))}
-            </div>
+          <Tabs value={view} className="w-full">
+            <TabsContent value="month" className="mt-0">
+              <div className="grid grid-cols-7 gap-0.5 text-center">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
+                  <div key={day} className="bg-gray-50 p-2 font-medium text-sm text-gray-700">
+                    {day}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="grid grid-cols-7 gap-0.5 mt-0.5">
+                {days.map((day, i) => {
+                  // Get posts for this day
+                  const dayPosts = posts.filter(post => 
+                    post.scheduledAt && isSameDay(new Date(post.scheduledAt), day)
+                  );
+                  
+                  return (
+                    <div 
+                      key={i} 
+                      className="min-h-[120px] bg-white border border-gray-200 p-1.5 text-sm"
+                    >
+                      <div className="text-right text-gray-600 text-xs mb-1">
+                        {format(day, 'd')}
+                      </div>
+                      
+                      <div className="space-y-1 overflow-y-auto max-h-[90px]">
+                        {isLoading ? (
+                          <div className="text-center py-2">
+                            <div className="animate-spin h-4 w-4 border-2 border-primary-500 rounded-full border-t-transparent mx-auto"></div>
+                          </div>
+                        ) : dayPosts.length > 0 ? (
+                          dayPosts.map(post => (
+                            <div 
+                              key={post.id} 
+                              className="p-1 bg-gray-50 rounded border border-gray-200 text-xs flex items-center space-x-1 cursor-pointer hover:bg-gray-100"
+                              onClick={() => handleEditPost(post)}
+                            >
+                              <span className="flex-shrink-0">
+                                {getPlatformIcon(post.platform)}
+                              </span>
+                              <span className="truncate flex-1">
+                                {post.content.substring(0, 15)}
+                                {post.content.length > 15 ? '...' : ''}
+                              </span>
+                            </div>
+                          ))
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </TabsContent>
             
-            <div className="grid grid-cols-7 gap-0.5 mt-0.5">
-              {days.map((day, i) => {
-                // Get posts for this day
-                const dayPosts = posts.filter(post => 
-                  post.scheduledAt && isSameDay(new Date(post.scheduledAt), day)
-                );
-                
-                return (
-                  <div 
-                    key={i} 
-                    className="min-h-[120px] bg-white border border-gray-200 p-1.5 text-sm"
-                  >
-                    <div className="text-right text-gray-600 text-xs mb-1">
-                      {format(day, 'd')}
-                    </div>
-                    
-                    <div className="space-y-1 overflow-y-auto max-h-[90px]">
-                      {isLoading ? (
-                        <div className="text-center py-2">
-                          <div className="animate-spin h-4 w-4 border-2 border-primary-500 rounded-full border-t-transparent mx-auto"></div>
-                        </div>
-                      ) : dayPosts.length > 0 ? (
-                        dayPosts.map(post => (
-                          <div 
-                            key={post.id} 
-                            className="p-1 bg-gray-50 rounded border border-gray-200 text-xs flex items-center space-x-1 cursor-pointer hover:bg-gray-100"
-                            onClick={() => handleEditPost(post)}
-                          >
-                            <span className="flex-shrink-0">
-                              {getPlatformIcon(post.platform)}
-                            </span>
-                            <span className="truncate flex-1">
-                              {post.content.substring(0, 15)}
-                              {post.content.length > 15 ? '...' : ''}
-                            </span>
-                          </div>
-                        ))
-                      ) : null}
-                    </div>
+            <TabsContent value="list" className="mt-0">
+              <div className="divide-y divide-gray-200">
+                {isLoading ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin h-8 w-8 border-4 border-primary-500 rounded-full border-t-transparent mx-auto"></div>
+                    <p className="mt-4 text-gray-500">Loading content calendar...</p>
                   </div>
-                );
-              })}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="list" className="mt-0">
-            <div className="divide-y divide-gray-200">
-              {isLoading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin h-8 w-8 border-4 border-primary-500 rounded-full border-t-transparent mx-auto"></div>
-                  <p className="mt-4 text-gray-500">Loading content calendar...</p>
-                </div>
-              ) : posts.length === 0 ? (
-                <div className="text-center py-12">
-                  <Calendar className="mx-auto h-12 w-12 text-gray-300" />
-                  <p className="mt-4 text-gray-500">No posts scheduled for this period</p>
-                  <p className="text-sm text-gray-400">Create your first post to see it here</p>
-                </div>
-              ) : (
-                posts.map(post => (
-                  <div key={post.id} className="py-4">
-                    <div className="flex items-start">
-                      <div className="flex-shrink-0 mt-1">
-                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
-                          {getPlatformIcon(post.platform)}
-                        </div>
-                      </div>
-                      <div className="ml-3 flex-1">
-                        <div className="flex justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-800">
-                              {post.platform.charAt(0).toUpperCase() + post.platform.slice(1)}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {post.scheduledAt 
-                                ? format(new Date(post.scheduledAt), "MMM d, yyyy 'at' h:mm a") 
-                                : "Draft"}
-                            </p>
+                ) : posts.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Calendar className="mx-auto h-12 w-12 text-gray-300" />
+                    <p className="mt-4 text-gray-500">No posts scheduled for this period</p>
+                    <p className="text-sm text-gray-400">Create your first post to see it here</p>
+                  </div>
+                ) : (
+                  posts.map(post => (
+                    <div key={post.id} className="py-4">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 mt-1">
+                          <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
+                            {getPlatformIcon(post.platform)}
                           </div>
-                          {getStatusBadge(post.status)}
                         </div>
-                        <p className="mt-2 text-sm text-gray-600">
-                          {post.content}
-                        </p>
-                        <div className="mt-3 flex space-x-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 p-0"
-                            onClick={() => handleEditPost(post)}
-                          >
-                            <Edit className="h-4 w-4" />
-                            <span className="sr-only">Edit</span>
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
-                            onClick={() => handleDeletePost(post)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Delete</span>
-                          </Button>
+                        <div className="ml-3 flex-1">
+                          <div className="flex justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-800">
+                                {post.platform.charAt(0).toUpperCase() + post.platform.slice(1)}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {post.scheduledAt 
+                                  ? format(new Date(post.scheduledAt), "MMM d, yyyy 'at' h:mm a") 
+                                  : "Draft"}
+                              </p>
+                            </div>
+                            {getStatusBadge(post.status)}
+                          </div>
+                          <p className="mt-2 text-sm text-gray-600">
+                            {post.content}
+                          </p>
+                          <div className="mt-3 flex space-x-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleEditPost(post)}
+                            >
+                              <Edit className="h-4 w-4" />
+                              <span className="sr-only">Edit</span>
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
+                              onClick={() => handleDeletePost(post)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Delete</span>
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </TabsContent>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

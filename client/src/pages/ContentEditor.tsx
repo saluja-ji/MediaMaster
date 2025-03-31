@@ -100,7 +100,7 @@ export default function ContentEditor() {
       form.reset();
       setAnalysisResult(null);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Failed to create post",
         description: error.message,
@@ -140,7 +140,7 @@ export default function ContentEditor() {
         title: "Analysis complete",
         description: "Check out our AI recommendations"
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Analysis failed",
         description: "There was an error analyzing your content. Please try again.",
@@ -186,317 +186,322 @@ export default function ContentEditor() {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <Tabs value={tab} onValueChange={setTab}>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Create New Post</CardTitle>
-                  <TabsList>
-                    <TabsTrigger value="editor">Editor</TabsTrigger>
-                    <TabsTrigger value="preview">Preview</TabsTrigger>
-                    <TabsTrigger value="analysis" disabled={!analysisResult}>Analysis</TabsTrigger>
-                  </TabsList>
-                </div>
-              </Tabs>
+              <div className="flex justify-between items-center">
+                <CardTitle>Create New Post</CardTitle>
+                <TabsList>
+                  <TabsTrigger value="editor" onClick={() => setTab("editor")}>Editor</TabsTrigger>
+                  <TabsTrigger value="preview" onClick={() => setTab("preview")}>Preview</TabsTrigger>
+                  <TabsTrigger value="analysis" onClick={() => setTab("analysis")} disabled={!analysisResult}>
+                    Analysis
+                  </TabsTrigger>
+                </TabsList>
+              </div>
             </CardHeader>
             
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)}>
                 <CardContent>
-                  <TabsContent value="editor" className="mt-0 space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="platform"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Platform</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select platform" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {platformEnum.options.map((platform) => (
-                                <SelectItem key={platform} value={platform}>
-                                  <div className="flex items-center">
-                                    {getPlatformIcon(platform)}
-                                    <span className="ml-2 capitalize">{platform}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="content"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Content</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Textarea
-                                placeholder="What's on your mind?"
-                                className="resize-none min-h-[200px]"
-                                {...field}
-                              />
-                              <div className={`absolute bottom-2 right-2 text-xs ${
-                                isOverLimit ? "text-red-500 font-semibold" : "text-gray-500"
-                              }`}>
-                                {characterCount}/{currentLimit}
-                              </div>
-                            </div>
-                          </FormControl>
-                          {isOverLimit && (
-                            <FormMessage>
-                              Content exceeds the maximum length for {platform}
-                            </FormMessage>
-                          )}
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-1"
-                        onClick={() => {
-                          // In a real app, this would open a media selector
-                          toast({
-                            title: "Media selector",
-                            description: "This would open a media selector in a real app"
-                          });
-                        }}
-                      >
-                        <Image className="h-4 w-4" />
-                        Add Media
-                      </Button>
-                      
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-1"
-                        onClick={() => {
-                          // In a real app, this would open a hashtag selector
-                          toast({
-                            title: "Hashtag selector",
-                            description: "This would open a hashtag selector in a real app"
-                          });
-                        }}
-                      >
-                        <Hash className="h-4 w-4" />
-                        Add Hashtags
-                      </Button>
-                      
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-1"
-                        onClick={() => {
-                          // In a real app, this would open the camera
-                          toast({
-                            title: "Camera",
-                            description: "This would open the camera in a real app"
-                          });
-                        }}
-                      >
-                        <Camera className="h-4 w-4" />
-                        Take Photo
-                      </Button>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Tabs value={tab} onValueChange={setTab}>
+                    <TabsContent value="editor" className="mt-0 space-y-4">
                       <FormField
                         control={form.control}
-                        name="scheduledAt"
+                        name="platform"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Schedule</FormLabel>
-                            <FormControl>
-                              <div className="flex space-x-2">
-                                <Input
-                                  type="datetime-local"
-                                  min={new Date().toISOString().slice(0, 16)}
-                                  {...field}
-                                />
-                              </div>
-                            </FormControl>
-                            <FormDescription>
-                              Leave empty to save as draft
-                            </FormDescription>
+                            <FormLabel>Platform</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select platform" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {platformEnum.options.map((platform) => (
+                                  <SelectItem key={platform} value={platform}>
+                                    <div className="flex items-center">
+                                      {getPlatformIcon(platform)}
+                                      <span className="ml-2 capitalize">{platform}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
                           </FormItem>
                         )}
                       />
                       
                       <FormField
                         control={form.control}
-                        name="analyze"
+                        name="content"
                         render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">
-                                AI Analysis
-                              </FormLabel>
-                              <FormDescription>
-                                Analyze content for engagement and risks
-                              </FormDescription>
-                            </div>
+                          <FormItem>
+                            <FormLabel>Content</FormLabel>
                             <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
+                              <div className="relative">
+                                <Textarea
+                                  placeholder="What's on your mind?"
+                                  className="resize-none min-h-[200px]"
+                                  {...field}
+                                />
+                                <div className={`absolute bottom-2 right-2 text-xs ${
+                                  isOverLimit ? "text-red-500 font-semibold" : "text-gray-500"
+                                }`}>
+                                  {characterCount}/{currentLimit}
+                                </div>
+                              </div>
                             </FormControl>
+                            {isOverLimit && (
+                              <FormMessage>
+                                Content exceeds the maximum length for {platform}
+                              </FormMessage>
+                            )}
                           </FormItem>
                         )}
                       />
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="preview" className="mt-0">
-                    <div className="border rounded-lg p-4 max-w-md mx-auto">
-                      <div className="flex items-center space-x-2 mb-3">
-                        {getPlatformIcon(platform)}
-                        <div>
-                          <p className="text-sm font-semibold">Your Account</p>
-                          <p className="text-xs text-gray-500">
-                            {form.getValues("scheduledAt")
-                              ? format(new Date(form.getValues("scheduledAt")), "MMM d, yyyy 'at' h:mm a")
-                              : "Draft"}
-                          </p>
+                      
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-1"
+                          onClick={() => {
+                            // In a real app, this would open a media selector
+                            toast({
+                              title: "Media selector",
+                              description: "This would open a media selector in a real app"
+                            });
+                          }}
+                        >
+                          <Image className="h-4 w-4" />
+                          Add Media
+                        </Button>
+                        
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-1"
+                          onClick={() => {
+                            // In a real app, this would open a hashtag selector
+                            toast({
+                              title: "Hashtag selector",
+                              description: "This would open a hashtag selector in a real app"
+                            });
+                          }}
+                        >
+                          <Hash className="h-4 w-4" />
+                          Add Hashtags
+                        </Button>
+                        
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-1"
+                          onClick={() => {
+                            // In a real app, this would open the camera
+                            toast({
+                              title: "Camera",
+                              description: "This would open the camera in a real app"
+                            });
+                          }}
+                        >
+                          <Camera className="h-4 w-4" />
+                          Take Photo
+                        </Button>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="scheduledAt"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Schedule</FormLabel>
+                              <FormControl>
+                                <div className="flex space-x-2">
+                                  <Input
+                                    type="datetime-local"
+                                    min={new Date().toISOString().slice(0, 16)}
+                                    {...field}
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormDescription>
+                                Leave empty to save as draft
+                              </FormDescription>
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="analyze"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-base">
+                                  AI Analysis
+                                </FormLabel>
+                                <FormDescription>
+                                  Analyze content for engagement and risks
+                                </FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="preview" className="mt-0">
+                      <div className="border rounded-lg p-4 max-w-md mx-auto">
+                        <div className="flex items-center space-x-2 mb-3">
+                          {getPlatformIcon(platform)}
+                          <div>
+                            <p className="text-sm font-semibold">Your Account</p>
+                            <p className="text-xs text-gray-500">
+                              {form.getValues("scheduledAt")
+                                ? format(
+                                    new Date(form.getValues("scheduledAt") || ""), 
+                                    "MMM d, yyyy 'at' h:mm a"
+                                  )
+                                : "Draft"}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <p className="text-sm whitespace-pre-wrap mb-3">{content}</p>
+                        
+                        {/* This would display media previews in a real app */}
+                        <div className="bg-gray-100 rounded-lg h-40 flex items-center justify-center text-gray-400">
+                          <Camera className="h-6 w-6 mr-2" />
+                          Media Preview
                         </div>
                       </div>
-                      
-                      <p className="text-sm whitespace-pre-wrap mb-3">{content}</p>
-                      
-                      {/* This would display media previews in a real app */}
-                      <div className="bg-gray-100 rounded-lg h-40 flex items-center justify-center text-gray-400">
-                        <Camera className="h-6 w-6 mr-2" />
-                        Media Preview
-                      </div>
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="analysis" className="mt-0">
-                    {analysisResult ? (
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="bg-white rounded-lg border p-4 text-center">
-                            <LineChart className="h-8 w-8 mx-auto mb-2 text-primary-500" />
-                            <p className="text-sm font-medium text-gray-500">Engagement Score</p>
-                            <p className="text-2xl font-semibold mt-1">
-                              {analysisResult.engagementScore}/100
-                            </p>
-                            <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-                              <div 
-                                className="bg-primary-500 h-2.5 rounded-full" 
-                                style={{ width: `${analysisResult.engagementScore}%` }}
-                              ></div>
+                    </TabsContent>
+                    
+                    <TabsContent value="analysis" className="mt-0">
+                      {analysisResult ? (
+                        <div className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-white rounded-lg border p-4 text-center">
+                              <LineChart className="h-8 w-8 mx-auto mb-2 text-primary" />
+                              <p className="text-sm font-medium text-gray-500">Engagement Score</p>
+                              <p className="text-2xl font-semibold mt-1">
+                                {analysisResult.engagementScore}/100
+                              </p>
+                              <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                                <div 
+                                  className="bg-primary h-2.5 rounded-full" 
+                                  style={{ width: `${analysisResult.engagementScore}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                            
+                            <div className="bg-white rounded-lg border p-4 text-center">
+                              <ShieldCheck className="h-8 w-8 mx-auto mb-2 text-amber-500" />
+                              <p className="text-sm font-medium text-gray-500">Shadowban Risk</p>
+                              <p className="text-2xl font-semibold mt-1">
+                                {analysisResult.shadowbanRisk}/10
+                              </p>
+                              <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                                <div 
+                                  className={`h-2.5 rounded-full ${
+                                    analysisResult.shadowbanRisk > 5 
+                                      ? 'bg-red-500' 
+                                      : analysisResult.shadowbanRisk > 3 
+                                        ? 'bg-amber-500' 
+                                        : 'bg-green-500'
+                                  }`}
+                                  style={{ width: `${analysisResult.shadowbanRisk * 10}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                            
+                            <div className="bg-white rounded-lg border p-4 text-center">
+                              <Zap className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
+                              <p className="text-sm font-medium text-gray-500">AI Recommendations</p>
+                              <p className="text-2xl font-semibold mt-1">
+                                {analysisResult.recommendations?.length || 0}
+                              </p>
                             </div>
                           </div>
                           
-                          <div className="bg-white rounded-lg border p-4 text-center">
-                            <ShieldCheck className="h-8 w-8 mx-auto mb-2 text-amber-500" />
-                            <p className="text-sm font-medium text-gray-500">Shadowban Risk</p>
-                            <p className="text-2xl font-semibold mt-1">
-                              {analysisResult.shadowbanRisk}/10
-                            </p>
-                            <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-                              <div 
-                                className={`h-2.5 rounded-full ${
-                                  analysisResult.shadowbanRisk > 5 
-                                    ? 'bg-red-500' 
-                                    : analysisResult.shadowbanRisk > 3 
-                                      ? 'bg-amber-500' 
-                                      : 'bg-green-500'
-                                }`}
-                                style={{ width: `${analysisResult.shadowbanRisk * 10}%` }}
-                              ></div>
+                          {analysisResult.recommendations && analysisResult.recommendations.length > 0 && (
+                            <div className="bg-white rounded-lg border p-4">
+                              <h3 className="text-sm font-semibold mb-3">Recommendations</h3>
+                              <ul className="list-disc pl-5 space-y-2">
+                                {analysisResult.recommendations.map((rec: string, i: number) => (
+                                  <li key={i} className="text-sm text-gray-700">{rec}</li>
+                                ))}
+                              </ul>
                             </div>
-                          </div>
+                          )}
                           
-                          <div className="bg-white rounded-lg border p-4 text-center">
-                            <Zap className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
-                            <p className="text-sm font-medium text-gray-500">AI Recommendations</p>
-                            <p className="text-2xl font-semibold mt-1">
-                              {analysisResult.recommendations?.length || 0}
-                            </p>
-                          </div>
+                          {analysisResult.risks && analysisResult.risks.length > 0 && (
+                            <div className="bg-white rounded-lg border p-4 border-amber-200 bg-amber-50">
+                              <h3 className="text-sm font-semibold mb-3 flex items-center">
+                                <AlertTriangle className="h-4 w-4 mr-2 text-amber-500" />
+                                Potential Risks
+                              </h3>
+                              <ul className="list-disc pl-5 space-y-2">
+                                {analysisResult.risks.map((risk: string, i: number) => (
+                                  <li key={i} className="text-sm text-gray-700">{risk}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          
+                          {analysisResult.optimizedContent && (
+                            <div className="bg-white rounded-lg border p-4 border-green-200 bg-green-50">
+                              <h3 className="text-sm font-semibold mb-3 flex items-center">
+                                <Sparkles className="h-4 w-4 mr-2 text-green-500" />
+                                AI Optimized Version
+                              </h3>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                {analysisResult.optimizedContent}
+                              </p>
+                              <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm" 
+                                className="mt-3"
+                                onClick={() => {
+                                  form.setValue("content", analysisResult.optimizedContent || "");
+                                  setTab("editor");
+                                  toast({
+                                    title: "Content updated",
+                                    description: "AI optimized content has been applied"
+                                  });
+                                }}
+                              >
+                                Apply Optimized Version
+                              </Button>
+                            </div>
+                          )}
                         </div>
-                        
-                        {analysisResult.recommendations && analysisResult.recommendations.length > 0 && (
-                          <div className="bg-white rounded-lg border p-4">
-                            <h3 className="text-sm font-semibold mb-3">Recommendations</h3>
-                            <ul className="list-disc pl-5 space-y-2">
-                              {analysisResult.recommendations.map((rec: string, i: number) => (
-                                <li key={i} className="text-sm text-gray-700">{rec}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        
-                        {analysisResult.risks && analysisResult.risks.length > 0 && (
-                          <div className="bg-white rounded-lg border p-4 border-amber-200 bg-amber-50">
-                            <h3 className="text-sm font-semibold mb-3 flex items-center">
-                              <AlertTriangle className="h-4 w-4 mr-2 text-amber-500" />
-                              Potential Risks
-                            </h3>
-                            <ul className="list-disc pl-5 space-y-2">
-                              {analysisResult.risks.map((risk: string, i: number) => (
-                                <li key={i} className="text-sm text-gray-700">{risk}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        
-                        {analysisResult.optimizedContent && (
-                          <div className="bg-white rounded-lg border p-4 border-green-200 bg-green-50">
-                            <h3 className="text-sm font-semibold mb-3 flex items-center">
-                              <Sparkles className="h-4 w-4 mr-2 text-green-500" />
-                              AI Optimized Version
-                            </h3>
-                            <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                              {analysisResult.optimizedContent}
-                            </p>
-                            <Button 
-                              type="button" 
-                              variant="outline" 
-                              size="sm" 
-                              className="mt-3"
-                              onClick={() => {
-                                form.setValue("content", analysisResult.optimizedContent);
-                                setTab("editor");
-                                toast({
-                                  title: "Content updated",
-                                  description: "AI optimized content has been applied"
-                                });
-                              }}
-                            >
-                              Apply Optimized Version
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12">
-                        <AlertTriangle className="h-12 w-12 text-gray-300 mx-auto" />
-                        <p className="mt-4 text-gray-500">No analysis available</p>
-                        <p className="text-sm text-gray-400">Analyze your content to see AI recommendations</p>
-                      </div>
-                    )}
-                  </TabsContent>
+                      ) : (
+                        <div className="text-center py-12">
+                          <AlertTriangle className="h-12 w-12 text-gray-300 mx-auto" />
+                          <p className="mt-4 text-gray-500">No analysis available</p>
+                          <p className="text-sm text-gray-400">Analyze your content to see AI recommendations</p>
+                        </div>
+                      )}
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
                 
                 <CardFooter className="flex justify-between">
