@@ -188,13 +188,6 @@ export default function ContentEditor() {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle>Create New Post</CardTitle>
-                <TabsList>
-                  <TabsTrigger value="editor" onClick={() => setTab("editor")}>Editor</TabsTrigger>
-                  <TabsTrigger value="preview" onClick={() => setTab("preview")}>Preview</TabsTrigger>
-                  <TabsTrigger value="analysis" onClick={() => setTab("analysis")} disabled={!analysisResult}>
-                    Analysis
-                  </TabsTrigger>
-                </TabsList>
               </div>
             </CardHeader>
             
@@ -202,6 +195,13 @@ export default function ContentEditor() {
               <form onSubmit={form.handleSubmit(onSubmit)}>
                 <CardContent>
                   <Tabs value={tab} onValueChange={setTab}>
+                    <div className="flex justify-end mb-4">
+                      <TabsList>
+                        <TabsTrigger value="editor">Editor</TabsTrigger>
+                        <TabsTrigger value="preview">Preview</TabsTrigger>
+                        <TabsTrigger value="analysis" disabled={!analysisResult}>Analysis</TabsTrigger>
+                      </TabsList>
+                    </div>
                     <TabsContent value="editor" className="mt-0 space-y-4">
                       <FormField
                         control={form.control}
